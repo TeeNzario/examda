@@ -3,19 +3,22 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
   Image,
+  TextInput,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { usersApi } from "../services/users";
 
 export default function ProfileScreen() {
   const { user, logout, refreshUser } = useAuth();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -23,30 +26,31 @@ export default function ProfileScreen() {
 
   const handleUpdatePassword = async () => {
     if (!password.trim()) {
-      Alert.alert("Error", "Please enter a new password");
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกรหัสผ่านใหม่");
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      Alert.alert("ข้อผิดพลาด", "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      Alert.alert("ข้อผิดพลาด", "รหัสผ่านไม่ตรงกัน");
       return;
     }
 
     setIsLoading(true);
     try {
       await usersApi.updateProfile({ password });
-      Alert.alert("Success", "Password updated successfully!");
+      Alert.alert("สำเร็จ", "เปลี่ยนรหัสผ่านเรียบร้อย!");
       setPassword("");
       setConfirmPassword("");
+      setShowPasswordModal(false);
     } catch (error: any) {
       Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to update password",
+        "ข้อผิดพลาด",
+        error.response?.data?.message || "ไม่สามารถเปลี่ยนรหัสผ่านได้",
       );
     } finally {
       setIsLoading(false);
@@ -54,10 +58,10 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่ไหม?", [
+      { text: "ยกเลิก", style: "cancel" },
       {
-        text: "Logout",
+        text: "ออกจากระบบ",
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -67,249 +71,299 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const fullName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.profileHeader}>
-        {user?.equippedItem?.imageUrl ? (
-          <Image
-            source={{ uri: user.equippedItem.imageUrl }}
-            style={styles.avatar}
-          />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>
-              {user?.firstName?.charAt(0) || "?"}
-            </Text>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Avatar Section */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarContainer}>
+            {user?.equippedItem?.imageUrl ? (
+              <Image
+                source={{ uri: user.equippedItem.imageUrl }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder} />
+            )}
           </View>
-        )}
-        <Text style={styles.name}>
-          {user?.firstName} {user?.lastName}
-        </Text>
-        {user?.equippedItem && (
-          <View style={styles.equippedBadge}>
-            <Text style={styles.equippedText}>
-              Wearing: {user.equippedItem.name}
-            </Text>
+          <Text style={styles.userName}>{user?.firstName || "User"}</Text>
+        </View>
+
+        {/* Info Card */}
+        <View style={styles.infoCard}>
+          <Text style={styles.cardTitle}>ข้อมูลส่วนตัว</Text>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>ชื่อ</Text>
+            <View style={styles.infoValueRow}>
+              <Text style={styles.infoValue}>{fullName || "-"}</Text>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </View>
           </View>
-        )}
-      </View>
 
-      <View style={styles.infoSection}>
-        <Text style={styles.label}>First Name</Text>
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>{user?.firstName}</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>อีเมล</Text>
+            <View style={styles.infoValueRow}>
+              <Text style={styles.infoValue}>{user?.email || "-"}</Text>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={styles.infoRow}
+            onPress={() => setShowPasswordModal(true)}
+          >
+            <Text style={styles.infoLabel}>รหัสผ่าน</Text>
+            <View style={styles.infoValueRow}>
+              <Text style={styles.infoValue}>**************</Text>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.label}>Email</Text>
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>{user?.email}</Text>
-        </View>
-
-        <Text style={styles.label}>Student ID</Text>
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>{user?.studentId}</Text>
-        </View>
-      </View>
-
-      <View style={styles.passwordSection}>
-        <Text style={styles.sectionTitle}>Change Password</Text>
-
-        <Text style={styles.label}>New Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter new password"
-          placeholderTextColor="#888"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <Text style={styles.label}>Confirm Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm new password"
-          placeholderTextColor="#888"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-
-        <TouchableOpacity
-          style={[
-            styles.updateButton,
-            isLoading && styles.updateButtonDisabled,
-          ]}
-          onPress={handleUpdatePassword}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.updateButtonText}>Update Password</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.actionSection}>
+        {/* Buttons */}
         <TouchableOpacity
           style={styles.inventoryButton}
           onPress={() => router.push("/(tabs)/inventory")}
         >
-          <Text style={styles.inventoryButtonText}>Go to Inventory</Text>
+          <Text style={styles.inventoryButtonText}>INVENTORY</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.homeButton}
-          onPress={() => router.push("/(tabs)")}
+          style={styles.backButton}
+          onPress={() => router.back()}
         >
-          <Text style={styles.homeButtonText}>Back to Home</Text>
+          <Text style={styles.backButtonText}>BACK</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Text style={styles.logoutButtonText}>ออกจากระบบ</Text>
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Password Change Modal */}
+      <Modal visible={showPasswordModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>เปลี่ยนรหัสผ่าน</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="รหัสผ่านใหม่"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="ยืนยันรหัสผ่าน"
+              placeholderTextColor="#999"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowPasswordModal(false);
+                  setPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                <Text style={styles.modalCancelText}>ยกเลิก</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={handleUpdatePassword}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>บันทึก</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5b7cfa",
   },
-  content: {
-    padding: 16,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 60,
     paddingBottom: 40,
   },
-  profileHeader: {
+  avatarSection: {
     alignItems: "center",
-    marginBottom: 32,
-    paddingTop: 16,
+    marginBottom: 24,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  avatarContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: "hidden",
     marginBottom: 16,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#e94560",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#f5a623",
   },
-  avatarText: {
+  userName: {
+    fontSize: 28,
+    fontWeight: "700",
     color: "#fff",
-    fontSize: 40,
-    fontWeight: "bold",
   },
-  name: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  equippedBadge: {
-    backgroundColor: "#16213e",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  infoCard: {
+    backgroundColor: "#fff",
     borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
   },
-  equippedText: {
-    color: "#ffd700",
-    fontSize: 14,
-  },
-  infoSection: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#a0a0a0",
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  infoBox: {
-    backgroundColor: "#16213e",
-    borderRadius: 8,
-    padding: 16,
-  },
-  infoText: {
-    fontSize: 16,
-    color: "#fff",
-  },
-  passwordSection: {
-    backgroundColor: "#16213e",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  sectionTitle: {
+  cardTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
-    marginBottom: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
+    marginBottom: 20,
   },
-  input: {
-    backgroundColor: "#0f3460",
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    color: "#fff",
+  infoRow: {
+    paddingVertical: 12,
   },
-  updateButton: {
-    backgroundColor: "#e94560",
-    borderRadius: 8,
-    padding: 16,
+  infoLabel: {
+    fontSize: 14,
+    color: "#888",
+    marginBottom: 4,
+  },
+  infoValueRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 16,
   },
-  updateButtonDisabled: {
-    opacity: 0.7,
-  },
-  updateButtonText: {
-    color: "#fff",
+  infoValue: {
     fontSize: 16,
-    fontWeight: "600",
+    color: "#1a1a1a",
+    flex: 1,
   },
-  actionSection: {
-    gap: 12,
+  divider: {
+    height: 1,
+    backgroundColor: "#eee",
   },
   inventoryButton: {
-    backgroundColor: "#2ecc71",
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: "#fff",
+    paddingVertical: 18,
+    borderRadius: 30,
     alignItems: "center",
+    marginBottom: 12,
   },
   inventoryButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    color: "#1a1a1a",
+    fontSize: 18,
+    fontWeight: "700",
   },
-  homeButton: {
-    backgroundColor: "#0f3460",
-    borderRadius: 8,
-    padding: 16,
+  backButton: {
+    backgroundColor: "#1a1a2e",
+    paddingVertical: 18,
+    borderRadius: 30,
     alignItems: "center",
+    marginBottom: 12,
   },
-  homeButtonText: {
+  backButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
   },
   logoutButton: {
-    borderRadius: 8,
-    padding: 16,
+    paddingVertical: 16,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ff4757",
   },
   logoutButtonText: {
-    color: "#ff4757",
+    color: "#fff",
+    fontSize: 16,
+    textDecorationLine: "underline",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  modalInput: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 12,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: "#eee",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalConfirmButton: {
+    flex: 1,
+    backgroundColor: "#f5a623",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalConfirmText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },

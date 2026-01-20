@@ -12,22 +12,15 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
 import { examsApi } from "../../services/exams";
-
-const NOTIFICATION_OPTIONS = [
-  { label: "1 minute before", value: 1 },
-  { label: "1 hour before", value: 60 },
-  { label: "1 day before", value: 1440 },
-];
 
 export default function EditExamScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [examDateTime, setExamDateTime] = useState(new Date());
-  const [selectedNotifications, setSelectedNotifications] = useState<number[]>(
-    [],
-  );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,30 +37,18 @@ export default function EditExamScreen() {
       setName(exam.name);
       setDescription(exam.description || "");
       setExamDateTime(new Date(exam.examDateTime));
-      // Parse remindBeforeMinutes - it might be a string or array
-      const reminders =
-        typeof exam.remindBeforeMinutes === "string"
-          ? JSON.parse(exam.remindBeforeMinutes)
-          : exam.remindBeforeMinutes;
-      setSelectedNotifications(reminders || []);
     } catch (error) {
-      Alert.alert("Error", "Failed to load exam", [
-        { text: "OK", onPress: () => router.back() },
+      Alert.alert("ข้อผิดพลาด", "ไม่สามารถโหลดข้อมูลได้", [
+        { text: "ตกลง", onPress: () => router.back() },
       ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const toggleNotification = (value: number) => {
-    setSelectedNotifications((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
-    );
-  };
-
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert("Error", "Please enter an exam name");
+      Alert.alert("ข้อผิดพลาด", "กรุณากรอกชื่อการสอบ");
       return;
     }
 
@@ -77,15 +58,14 @@ export default function EditExamScreen() {
         name: name.trim(),
         description: description.trim() || undefined,
         examDateTime: examDateTime.toISOString(),
-        remindBeforeMinutes: selectedNotifications,
       });
-      Alert.alert("Success", "Exam updated successfully!", [
-        { text: "OK", onPress: () => router.back() },
+      Alert.alert("สำเร็จ", "บันทึกข้อมูลเรียบร้อย!", [
+        { text: "ตกลง", onPress: () => router.back() },
       ]);
     } catch (error: any) {
       Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to update exam",
+        "ข้อผิดพลาด",
+        error.response?.data?.message || "ไม่สามารถบันทึกได้",
       );
     } finally {
       setIsSaving(false);
@@ -93,17 +73,17 @@ export default function EditExamScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert("Delete Exam", "Are you sure you want to delete this exam?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("ลบการสอบ", "คุณต้องการลบการสอบนี้ใช่ไหม?", [
+      { text: "ยกเลิก", style: "cancel" },
       {
-        text: "Delete",
+        text: "ลบ",
         style: "destructive",
         onPress: async () => {
           try {
             await examsApi.delete(parseInt(id));
             router.back();
           } catch (error) {
-            Alert.alert("Error", "Failed to delete exam");
+            Alert.alert("ข้อผิดพลาด", "ไม่สามารถลบได้");
           }
         },
       },
@@ -132,110 +112,73 @@ export default function EditExamScreen() {
     }
   };
 
+  const formattedDateTime = `${format(examDateTime, "HH:mm")} น. ${format(examDateTime, "d MMMM yyyy", { locale: th })}`;
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#e94560" />
+        <ActivityIndicator size="large" color="#fff" />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>Exam Name *</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter exam name"
-        placeholderTextColor="#888"
-        value={name}
-        onChangeText={setName}
-      />
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Form Card */}
+        <View style={styles.card}>
+          <Text style={styles.label}>ชื่อการสอบ</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Computer Programming I"
+            placeholderTextColor="#aaa"
+            value={name}
+            onChangeText={setName}
+          />
 
-      <Text style={styles.label}>Description</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Enter description (optional)"
-        placeholderTextColor="#888"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        numberOfLines={4}
-      />
+          <Text style={styles.label}>คำอธิบาย</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="ออกบทที่ 2 กัน 3"
+            placeholderTextColor="#aaa"
+            value={description}
+            onChangeText={setDescription}
+          />
 
-      <Text style={styles.label}>Date & Time *</Text>
-      <View style={styles.dateTimeContainer}>
-        <TouchableOpacity
-          style={styles.dateButton}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text style={styles.dateButtonText}>
-            📅 {examDateTime.toLocaleDateString()}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.dateButton}
-          onPress={() => setShowTimePicker(true)}
-        >
-          <Text style={styles.dateButtonText}>
-            🕐{" "}
-            {examDateTime.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={examDateTime}
-          mode="date"
-          display="default"
-          onChange={onDateChange}
-        />
-      )}
-
-      {showTimePicker && (
-        <DateTimePicker
-          value={examDateTime}
-          mode="time"
-          display="default"
-          onChange={onTimeChange}
-        />
-      )}
-
-      <Text style={styles.label}>Notifications</Text>
-      <View style={styles.notificationContainer}>
-        {NOTIFICATION_OPTIONS.map((option) => (
+          <Text style={styles.label}>เลือกวัน-เวลาสอบ</Text>
           <TouchableOpacity
-            key={option.value}
-            style={[
-              styles.notificationOption,
-              selectedNotifications.includes(option.value) &&
-                styles.notificationSelected,
-            ]}
-            onPress={() => toggleNotification(option.value)}
+            style={styles.dateTimeButton}
+            onPress={() => {
+              setShowDatePicker(true);
+              setTimeout(() => setShowTimePicker(true), 100);
+            }}
           >
-            <Text
-              style={[
-                styles.notificationText,
-                selectedNotifications.includes(option.value) &&
-                  styles.notificationTextSelected,
-              ]}
-            >
-              {option.label}
-            </Text>
+            <Text style={styles.dateTimeText}>{formattedDateTime}</Text>
           </TouchableOpacity>
-        ))}
-      </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={examDateTime}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+            />
+          )}
+
+          {showTimePicker && (
+            <DateTimePicker
+              value={examDateTime}
+              mode="time"
+              display="default"
+              onChange={onTimeChange}
+            />
+          )}
+        </View>
+
+        {/* Buttons */}
         <TouchableOpacity
           style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
           onPress={handleSave}
@@ -244,135 +187,107 @@ export default function EditExamScreen() {
           {isSaving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
+            <Text style={styles.saveButtonText}>SAVE</Text>
           )}
         </TouchableOpacity>
-      </View>
 
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-        <Text style={styles.deleteButtonText}>Delete Exam</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>BACK</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <Text style={styles.deleteButtonText}>ลบการสอบนี้</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5b7cfa",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5b7cfa",
     justifyContent: "center",
     alignItems: "center",
   },
-  content: {
-    padding: 16,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingTop: 80,
     paddingBottom: 40,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#fff",
-    marginBottom: 8,
+    color: "#1a1a1a",
+    marginBottom: 10,
     marginTop: 16,
   },
   input: {
-    backgroundColor: "#16213e",
-    borderRadius: 8,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
     padding: 16,
-    fontSize: 16,
-    color: "#fff",
-    borderWidth: 1,
-    borderColor: "#0f3460",
+    fontSize: 15,
+    color: "#333",
   },
-  textArea: {
-    height: 100,
-    textAlignVertical: "top",
-  },
-  dateTimeContainer: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  dateButton: {
-    flex: 1,
-    backgroundColor: "#16213e",
-    borderRadius: 8,
+  dateTimeButton: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "#0f3460",
   },
-  dateButtonText: {
-    fontSize: 16,
-    color: "#fff",
-    textAlign: "center",
-  },
-  notificationContainer: {
-    gap: 8,
-  },
-  notificationOption: {
-    backgroundColor: "#16213e",
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#0f3460",
-  },
-  notificationSelected: {
-    backgroundColor: "#e94560",
-    borderColor: "#e94560",
-  },
-  notificationText: {
-    fontSize: 16,
-    color: "#888",
-    textAlign: "center",
-  },
-  notificationTextSelected: {
-    color: "#fff",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 32,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: "#0f3460",
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+  dateTimeText: {
+    fontSize: 15,
+    color: "#333",
   },
   saveButton: {
-    flex: 1,
-    backgroundColor: "#e94560",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: "#f5a623",
+    paddingVertical: 18,
+    borderRadius: 30,
     alignItems: "center",
+    marginBottom: 12,
   },
   saveButtonDisabled: {
     opacity: 0.7,
   },
   saveButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  backButton: {
+    backgroundColor: "#1a1a2e",
+    paddingVertical: 18,
+    borderRadius: 30,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  backButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
   },
   deleteButton: {
-    marginTop: 24,
-    padding: 16,
-    borderRadius: 8,
+    paddingVertical: 16,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ff4757",
   },
   deleteButtonText: {
-    color: "#ff4757",
+    color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });

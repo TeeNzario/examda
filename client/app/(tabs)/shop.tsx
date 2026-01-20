@@ -89,6 +89,7 @@ export default function ShopScreen() {
           <View style={styles.imagePlaceholder} />
         )}
       </View>
+      <Text style={styles.priceText}>🪙 {item.price}</Text>
       <TouchableOpacity
         style={[styles.buyButton, item.isPurchased && styles.buyButtonDisabled]}
         onPress={() => handlePurchase(item)}
@@ -182,7 +183,13 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 8,
+  },
+  priceText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 8,
   },
   itemImage: {
     width: "80%",

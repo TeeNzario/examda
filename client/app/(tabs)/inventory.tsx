@@ -11,6 +11,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
+import Header from "../../components/Header";
 import { inventoryApi } from "../../services/inventory";
 import { InventoryItem } from "../../types";
 import { useAuth } from "../../context/AuthContext";
@@ -41,73 +42,79 @@ export default function InventoryScreen() {
   );
 
   const handleEquip = async (item: InventoryItem) => {
-    setEquipping(item.id);
-    try {
-      if (item.isEquipped) {
+    if (item.isEquipped) {
+      // Already equipped, unequip it
+      setEquipping(item.id);
+      try {
         await inventoryApi.unequipItem();
-      } else {
-        await inventoryApi.equipItem(item.id);
+        await refreshUser();
+        await loadItems();
+        Alert.alert("สำเร็จ", "ถอดไอเทมเรียบร้อย");
+      } catch (error: any) {
+        Alert.alert("ข้อผิดพลาด", error.response?.data?.message || "ไม่สำเร็จ");
+      } finally {
+        setEquipping(null);
       }
-      await refreshUser();
-      loadItems();
-    } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.message || "Action failed");
-    } finally {
-      setEquipping(null);
+    } else {
+      // Equip new item
+      setEquipping(item.id);
+      try {
+        await inventoryApi.equipItem(item.id);
+        await refreshUser();
+        await loadItems();
+        Alert.alert("สำเร็จ", `สวมใส่ ${item.name} เรียบร้อย!`);
+      } catch (error: any) {
+        Alert.alert("ข้อผิดพลาด", error.response?.data?.message || "ไม่สำเร็จ");
+      } finally {
+        setEquipping(null);
+      }
     }
   };
 
-  const renderItem = ({ item }: { item: InventoryItem }) => (
-    <View style={[styles.itemCard, item.isEquipped && styles.equippedCard]}>
-      {item.imageUrl && (
-        <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
-      )}
-      <Text style={styles.itemName}>{item.name}</Text>
-
-      {item.isEquipped && (
-        <View style={styles.equippedBadge}>
-          <Text style={styles.equippedText}>Equipped</Text>
+  const renderItem = ({ item }: { item: InventoryItem }) => {
+    return (
+      <View style={styles.itemContainer}>
+        <View style={styles.itemCard}>
+          {item.imageUrl ? (
+            <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
+          ) : (
+            <View style={styles.imagePlaceholder} />
+          )}
         </View>
-      )}
-
-      <TouchableOpacity
-        style={[styles.actionButton, item.isEquipped && styles.unequipButton]}
-        onPress={() => handleEquip(item)}
-        disabled={equipping === item.id}
-      >
-        {equipping === item.id ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.actionButtonText}>
-            {item.isEquipped ? "Unequip" : "Equip"}
-          </Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
+        <TouchableOpacity
+          style={[styles.equipButton, item.isEquipped && styles.equippedButton]}
+          onPress={() => handleEquip(item)}
+          disabled={equipping === item.id}
+        >
+          {equipping === item.id ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text
+              style={[
+                styles.equipButtonText,
+                item.isEquipped && styles.equippedButtonText,
+              ]}
+            >
+              {item.isEquipped ? "EQUIPED" : "EQUIP"}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {/* No Header with coins here - as per requirements */}
-      <View style={styles.headerSimple}>
-        <Text style={styles.title}>Inventory</Text>
-        <Text style={styles.subtitle}>Your collected items</Text>
-      </View>
+      <Header showCoins={false} />
 
-      <View style={styles.content}>
+      <View style={styles.inventoryContainer}>
+        <Text style={styles.title}>INVENTORY</Text>
+
         {isLoading ? (
-          <ActivityIndicator
-            size="large"
-            color="#e94560"
-            style={styles.loader}
-          />
+          <ActivityIndicator size="large" color="#fff" style={styles.loader} />
         ) : items.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📦</Text>
-            <Text style={styles.emptyText}>Your inventory is empty</Text>
-            <Text style={styles.emptySubtext}>
-              Purchase items from the Shop to fill it!
-            </Text>
+            <Text style={styles.emptyText}>ยังไม่มีไอเทม</Text>
           </View>
         ) : (
           <FlatList
@@ -124,7 +131,7 @@ export default function InventoryScreen() {
                   setRefreshing(true);
                   loadItems();
                 }}
-                tintColor="#e94560"
+                tintColor="#fff"
               />
             }
           />
@@ -137,84 +144,71 @@ export default function InventoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5b7cfa",
   },
-  headerSimple: {
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  content: {
+  inventoryContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    backgroundColor: "#4a6cf0",
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 100,
+    borderRadius: 24,
+    padding: 20,
   },
   title: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "800",
     color: "#fff",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#888",
+    textAlign: "center",
+    marginBottom: 24,
   },
   list: {
-    paddingTop: 16,
     paddingBottom: 20,
   },
   row: {
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  itemCard: {
-    backgroundColor: "#16213e",
-    borderRadius: 12,
-    padding: 16,
-    width: "48%",
+  itemContainer: {
+    width: "47%",
     alignItems: "center",
   },
-  equippedCard: {
-    borderColor: "#e94560",
-    borderWidth: 2,
+  itemCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    width: "100%",
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
   },
   itemImage: {
-    width: 64,
-    height: 64,
-    marginBottom: 12,
+    width: "80%",
+    height: "80%",
+    resizeMode: "contain",
   },
-  itemName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 8,
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
   },
-  equippedBadge: {
-    backgroundColor: "#e94560",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 8,
+  equipButton: {
+    backgroundColor: "#f5a623",
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
-  equippedText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
+  equippedButton: {
+    backgroundColor: "#1a1a2e",
   },
-  actionButton: {
-    backgroundColor: "#2ecc71",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  unequipButton: {
-    backgroundColor: "#0f3460",
-  },
-  actionButtonText: {
+  equipButtonText: {
     color: "#fff",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
+  },
+  equippedButtonText: {
+    color: "#fff",
   },
   loader: {
     marginTop: 40,
@@ -224,19 +218,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   emptyText: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 18,
     color: "#fff",
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 16,
-    color: "#888",
-    textAlign: "center",
   },
 });

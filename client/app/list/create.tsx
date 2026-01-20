@@ -18,7 +18,7 @@ import { th } from "date-fns/locale";
 import { examsApi } from "../../services/exams";
 
 const NOTIFICATION_OPTIONS = [
-  { label: "ก่อน 30 นาที", value: 30 },
+  { label: "ก่อน 1 นาที", value: 1 },
   { label: "ก่อน 1 ชั่วโมง", value: 60 },
   { label: "ก่อน 1 วัน", value: 1440 },
 ];
@@ -52,14 +52,14 @@ export default function CreateExamScreen() {
 
       const secondsUntil = Math.floor((notifyAt.getTime() - Date.now()) / 1000);
       let timeString = "";
-      if (minutes === 30) timeString = "อีก 30 นาที";
-      else if (minutes === 60) timeString = "อีก 1 ชั่วโมง";
-      else if (minutes === 1440) timeString = "พรุ่งนี้";
+      if (minutes === 1) timeString = "อีก 1 นาทีจะสอบคร้าบบ";
+      else if (minutes === 60) timeString = "อีก 1 ชั่วโมงจะสอบคร้าบบ";
+      else if (minutes === 1440) timeString = "พรุ่งนี้จะสอบคร้าบบ";
 
       try {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "📚 เตือนการสอบ",
+            title: "📚 เตือนการสอบคร้าบบ",
             body: `${examName} ${timeString}!`,
             data: { examName },
           },

@@ -18,7 +18,7 @@ interface TimerOption {
 }
 
 const TIMER_OPTIONS: TimerOption[] = [
-  { label: "10 นาที", seconds: 10 * 60, reward: 5 },
+  { label: "60 วินาที", seconds: 60, reward: 2 },
   { label: "20 นาที", seconds: 20 * 60, reward: 10 },
   { label: "30 นาที", seconds: 30 * 60, reward: 15 },
   { label: "1 ชั่วโมง", seconds: 60 * 60, reward: 30 },

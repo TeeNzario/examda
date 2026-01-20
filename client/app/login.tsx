@@ -34,7 +34,8 @@ export default function LoginScreen() {
       router.replace("/(tabs)");
     } catch (err: any) {
       setError(
-        err.response?.data?.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+        err.response?.data?.message ||
+          "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
       );
     } finally {
       setIsLoading(false);
@@ -97,7 +98,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#5B7BC0",
+    backgroundColor: "#5b7cfa",
   },
   content: {
     flex: 1,
