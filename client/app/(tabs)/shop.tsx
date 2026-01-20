@@ -42,87 +42,81 @@ export default function ShopScreen() {
   );
 
   const handlePurchase = async (item: ShopItem) => {
-    if (item.isPurchased) return;
-
-    if ((user?.coin || 0) < item.price) {
-      Alert.alert(
-        "Not Enough Coins",
-        "You need more coins to purchase this item.",
-      );
+    if (item.isPurchased) {
+      Alert.alert("แจ้งเตือน", "คุณซื้อไอเทมนี้แล้ว");
       return;
     }
 
-    Alert.alert("Purchase Item", `Buy ${item.name} for ${item.price} coins?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Purchase",
-        onPress: async () => {
-          setPurchasing(item.id);
-          try {
-            await shopApi.purchaseItem(item.id);
-            await refreshUser();
-            loadItems();
-            Alert.alert("Success", `You purchased ${item.name}!`);
-          } catch (error: any) {
-            Alert.alert(
-              "Error",
-              error.response?.data?.message || "Purchase failed",
-            );
-          } finally {
-            setPurchasing(null);
-          }
+    if ((user?.coin || 0) < item.price) {
+      Alert.alert("เหรียญไม่พอ", "คุณต้องมีเหรียญเพิ่มเพื่อซื้อไอเทมนี้");
+      return;
+    }
+
+    Alert.alert(
+      "ยืนยันการซื้อ",
+      `ซื้อ ${item.name} ในราคา ${item.price} เหรียญ?`,
+      [
+        { text: "ยกเลิก", style: "cancel" },
+        {
+          text: "ซื้อ",
+          onPress: async () => {
+            setPurchasing(item.id);
+            try {
+              await shopApi.purchaseItem(item.id);
+              await refreshUser();
+              loadItems();
+              Alert.alert("สำเร็จ", `คุณได้ซื้อ ${item.name} แล้ว!`);
+            } catch (error: any) {
+              Alert.alert(
+                "ข้อผิดพลาด",
+                error.response?.data?.message || "ซื้อไม่สำเร็จ",
+              );
+            } finally {
+              setPurchasing(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
-  const renderItem = ({ item }: { item: ShopItem }) => (
-    <TouchableOpacity
-      style={[styles.itemCard, item.isPurchased && styles.purchasedCard]}
-      onPress={() => handlePurchase(item)}
-      disabled={item.isPurchased || purchasing === item.id}
-    >
-      {item.imageUrl && (
-        <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
-      )}
-      <Text style={styles.itemName}>{item.name}</Text>
-      <Text style={styles.itemDescription} numberOfLines={2}>
-        {item.description}
-      </Text>
-
-      {item.isPurchased ? (
-        <View style={styles.purchasedBadge}>
-          <Text style={styles.purchasedText}>Purchased ✓</Text>
-        </View>
-      ) : purchasing === item.id ? (
-        <ActivityIndicator color="#e94560" style={styles.purchaseButton} />
-      ) : (
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceText}>🪙 {item.price}</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+  const renderItem = ({ item, index }: { item: ShopItem; index: number }) => (
+    <View style={styles.itemContainer}>
+      <View style={styles.itemCard}>
+        {item.imageUrl ? (
+          <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
+        ) : (
+          <View style={styles.imagePlaceholder} />
+        )}
+      </View>
+      <TouchableOpacity
+        style={[styles.buyButton, item.isPurchased && styles.buyButtonDisabled]}
+        onPress={() => handlePurchase(item)}
+        disabled={item.isPurchased || purchasing === item.id}
+      >
+        {purchasing === item.id ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.buyButtonText}>
+            {item.isPurchased ? "OWNED" : "BUY"}
+          </Text>
+        )}
+      </TouchableOpacity>
+    </View>
   );
 
   return (
     <View style={styles.container}>
       <Header />
 
-      <View style={styles.content}>
-        <Text style={styles.title}>Shop</Text>
-        <Text style={styles.subtitle}>
-          Customize your profile with stickers!
-        </Text>
+      <View style={styles.shopContainer}>
+        <Text style={styles.title}>SHOP</Text>
 
         {isLoading ? (
-          <ActivityIndicator
-            size="large"
-            color="#e94560"
-            style={styles.loader}
-          />
+          <ActivityIndicator size="large" color="#fff" style={styles.loader} />
         ) : items.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No items available</Text>
+            <Text style={styles.emptyText}>ไม่มีไอเทม</Text>
           </View>
         ) : (
           <FlatList
@@ -139,7 +133,7 @@ export default function ShopScreen() {
                   setRefreshing(true);
                   loadItems();
                 }}
-                tintColor="#e94560"
+                tintColor="#fff"
               />
             }
           />
@@ -152,21 +146,22 @@ export default function ShopScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5b7cfa",
   },
-  content: {
+  shopContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    backgroundColor: "#4a6cf0",
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 100,
+    borderRadius: 24,
+    padding: 20,
   },
   title: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "800",
     color: "#fff",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#888",
+    textAlign: "center",
     marginBottom: 24,
   },
   list: {
@@ -174,62 +169,45 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  itemCard: {
-    backgroundColor: "#16213e",
-    borderRadius: 12,
-    padding: 16,
-    width: "48%",
+  itemContainer: {
+    width: "47%",
     alignItems: "center",
   },
-  purchasedCard: {
-    opacity: 0.7,
-    borderColor: "#2ecc71",
-    borderWidth: 2,
+  itemCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    width: "100%",
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
   },
   itemImage: {
-    width: 64,
-    height: 64,
-    marginBottom: 12,
+    width: "80%",
+    height: "80%",
+    resizeMode: "contain",
   },
-  itemName: {
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+  },
+  buyButton: {
+    backgroundColor: "#f5a623",
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  buyButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  buyButtonText: {
+    color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  itemDescription: {
-    fontSize: 12,
-    color: "#888",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  priceContainer: {
-    backgroundColor: "#0f3460",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  priceText: {
-    color: "#ffd700",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  purchasedBadge: {
-    backgroundColor: "#2ecc71",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  purchasedText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  purchaseButton: {
-    paddingVertical: 8,
+    fontWeight: "700",
   },
   loader: {
     marginTop: 40,
@@ -241,6 +219,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: "#888",
+    color: "#fff",
   },
 });

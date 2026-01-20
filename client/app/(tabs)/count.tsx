@@ -18,23 +18,23 @@ interface TimerOption {
 }
 
 const TIMER_OPTIONS: TimerOption[] = [
-  { label: "10 Seconds", seconds: 10, reward: 2 },
-  { label: "20 Minutes", seconds: 20 * 60, reward: 10 },
-  { label: "30 Minutes", seconds: 30 * 60, reward: 15 },
-  { label: "1 Hour", seconds: 60 * 60, reward: 60 },
+  { label: "10 นาที", seconds: 10 * 60, reward: 5 },
+  { label: "20 นาที", seconds: 20 * 60, reward: 10 },
+  { label: "30 นาที", seconds: 30 * 60, reward: 15 },
+  { label: "1 ชั่วโมง", seconds: 60 * 60, reward: 30 },
 ];
 
 export default function CountScreen() {
-  const [selectedOption, setSelectedOption] = useState<TimerOption | null>(
-    null,
-  );
-  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<TimerOption>(
+    TIMER_OPTIONS[2],
+  ); // Default 30 min
+  const [timeRemaining, setTimeRemaining] = useState(TIMER_OPTIONS[2].seconds);
   const [isRunning, setIsRunning] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [earnedReward, setEarnedReward] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { refreshUser, user, updateUserCoins } = useAuth();
+  const { updateUserCoins } = useAuth();
 
   useEffect(() => {
     return () => {
@@ -44,18 +44,21 @@ export default function CountScreen() {
     };
   }, []);
 
-  const startTimer = (option: TimerOption) => {
-    setSelectedOption(option);
-    setTimeRemaining(option.seconds);
-    setIsRunning(true);
+  const selectDuration = (option: TimerOption) => {
+    if (!isRunning) {
+      setSelectedOption(option);
+      setTimeRemaining(option.seconds);
+    }
+  };
 
+  const startTimer = () => {
+    setIsRunning(true);
     intervalRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
-          // Timer completed
           clearInterval(intervalRef.current!);
           setIsRunning(false);
-          setEarnedReward(option.reward);
+          setEarnedReward(selectedOption.reward);
           setShowCompleteModal(true);
           return 0;
         }
@@ -73,31 +76,24 @@ export default function CountScreen() {
       clearInterval(intervalRef.current);
     }
     setIsRunning(false);
-    setTimeRemaining(0);
-    setSelectedOption(null);
+    setTimeRemaining(selectedOption.seconds);
     setShowStopModal(false);
   };
 
   const handleCompleteConfirm = async () => {
     try {
-      // Award coins
       const updatedUser = await usersApi.addCoins(earnedReward);
       updateUserCoins(updatedUser.coin);
     } catch (error) {
       console.log("Error adding coins:", error);
     }
     setShowCompleteModal(false);
-    setSelectedOption(null);
+    setTimeRemaining(selectedOption.seconds);
   };
 
   const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-
-    if (hrs > 0) {
-      return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-    }
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
@@ -106,56 +102,93 @@ export default function CountScreen() {
       <Header />
 
       <View style={styles.content}>
-        <Text style={styles.title}>Focus Timer</Text>
-        <Text style={styles.subtitle}>Stay focused and earn coins!</Text>
+        <Text style={styles.subtitle}>stay focus</Text>
 
-        {isRunning ? (
-          <View style={styles.timerContainer}>
-            <Text style={styles.timerLabel}>{selectedOption?.label}</Text>
-            <Text style={styles.timer}>{formatTime(timeRemaining)}</Text>
-            <Text style={styles.rewardPreview}>
-              🪙 +{selectedOption?.reward} coins on completion
-            </Text>
-            <TouchableOpacity style={styles.stopButton} onPress={handleStop}>
-              <Text style={styles.stopButtonText}>Stop</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.optionsContainer}>
-            {TIMER_OPTIONS.map((option, index) => (
+        <Text style={styles.timer}>{formatTime(timeRemaining)}</Text>
+
+        {/* Duration Options */}
+        <View style={styles.optionsContainer}>
+          <View style={styles.optionsRow}>
+            {TIMER_OPTIONS.slice(0, 2).map((option) => (
               <TouchableOpacity
-                key={index}
-                style={styles.optionButton}
-                onPress={() => startTimer(option)}
+                key={option.seconds}
+                style={[
+                  styles.optionButton,
+                  selectedOption.seconds === option.seconds &&
+                    styles.optionButtonActive,
+                ]}
+                onPress={() => selectDuration(option)}
+                disabled={isRunning}
               >
-                <Text style={styles.optionLabel}>{option.label}</Text>
-                <Text style={styles.optionReward}>🪙 +{option.reward}</Text>
+                <Text
+                  style={[
+                    styles.optionText,
+                    selectedOption.seconds === option.seconds &&
+                      styles.optionTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
-        )}
+          <View style={styles.optionsRow}>
+            {TIMER_OPTIONS.slice(2, 4).map((option) => (
+              <TouchableOpacity
+                key={option.seconds}
+                style={[
+                  styles.optionButton,
+                  selectedOption.seconds === option.seconds &&
+                    styles.optionButtonActive,
+                ]}
+                onPress={() => selectDuration(option)}
+                disabled={isRunning}
+              >
+                <Text
+                  style={[
+                    styles.optionText,
+                    selectedOption.seconds === option.seconds &&
+                      styles.optionTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Start/Stop Button */}
+        <TouchableOpacity
+          style={styles.startButton}
+          onPress={isRunning ? handleStop : startTimer}
+        >
+          <Text style={styles.startButtonText}>
+            {isRunning ? "STOP" : "START"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Stop Confirmation Modal */}
       <Modal visible={showStopModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Stop Timer?</Text>
+            <Text style={styles.modalTitle}>หยุดจับเวลา?</Text>
             <Text style={styles.modalText}>
-              You will lose your progress and won't receive any coins.
+              คุณจะไม่ได้รับเหรียญถ้าหยุดตอนนี้
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
                 onPress={() => setShowStopModal(false)}
               >
-                <Text style={styles.modalCancelText}>Continue</Text>
+                <Text style={styles.modalCancelText}>ทำต่อ</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalConfirmButton}
                 onPress={confirmStop}
               >
-                <Text style={styles.modalConfirmText}>Stop</Text>
+                <Text style={styles.modalConfirmText}>หยุด</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -167,16 +200,16 @@ export default function CountScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.celebrationIcon}>🎉</Text>
-            <Text style={styles.modalTitle}>Congratulations!</Text>
+            <Text style={styles.modalTitle}>ยินดีด้วย!</Text>
             <Text style={styles.modalText}>
-              You focused for {selectedOption?.label} and earned
+              คุณโฟกัสได้ {selectedOption.label} และได้รับ
             </Text>
-            <Text style={styles.rewardText}>🪙 +{earnedReward} coins</Text>
+            <Text style={styles.rewardText}>🪙 +{earnedReward} เหรียญ</Text>
             <TouchableOpacity
               style={styles.modalConfirmButton}
               onPress={handleCompleteConfirm}
             >
-              <Text style={styles.modalConfirmText}>Awesome!</Text>
+              <Text style={styles.modalConfirmText}>เยี่ยม!</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -188,77 +221,64 @@ export default function CountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5b7cfa",
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    marginBottom: 80,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#888",
-    textAlign: "center",
-    marginBottom: 32,
-  },
-  optionsContainer: {
-    gap: 16,
-  },
-  optionButton: {
-    backgroundColor: "#16213e",
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  optionLabel: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  optionReward: {
-    fontSize: 16,
-    color: "#ffd700",
-  },
-  timerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  timerLabel: {
-    fontSize: 20,
-    color: "#888",
+    color: "#d4dbf5",
     marginBottom: 16,
   },
   timer: {
-    fontSize: 72,
-    fontWeight: "bold",
-    color: "#e94560",
-    fontVariant: ["tabular-nums"],
-  },
-  rewardPreview: {
-    fontSize: 18,
-    color: "#ffd700",
-    marginTop: 24,
-    marginBottom: 48,
-  },
-  stopButton: {
-    backgroundColor: "#ff4757",
-    paddingHorizontal: 48,
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  stopButtonText: {
+    fontSize: 80,
+    fontWeight: "800",
     color: "#fff",
-    fontSize: 18,
+    fontVariant: ["tabular-nums"],
+    marginBottom: 32,
+  },
+  optionsContainer: {
+    marginBottom: 32,
+  },
+  optionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+  },
+  optionButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "#fff",
+    backgroundColor: "transparent",
+  },
+  optionButtonActive: {
+    backgroundColor: "#fff",
+  },
+  optionText: {
+    fontSize: 16,
     fontWeight: "600",
+    color: "#fff",
+  },
+  optionTextActive: {
+    color: "#f5a623",
+  },
+  startButton: {
+    backgroundColor: "#f5a623",
+    paddingHorizontal: 64,
+    paddingVertical: 18,
+    borderRadius: 30,
+  },
+  startButtonText: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
   },
   modalOverlay: {
     flex: 1,
@@ -268,8 +288,8 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalContent: {
-    backgroundColor: "#16213e",
-    borderRadius: 16,
+    backgroundColor: "#fff",
+    borderRadius: 20,
     padding: 24,
     width: "100%",
     alignItems: "center",
@@ -281,19 +301,19 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#1a1a1a",
     marginBottom: 12,
   },
   modalText: {
     fontSize: 16,
-    color: "#888",
+    color: "#666",
     textAlign: "center",
     marginBottom: 16,
   },
   rewardText: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#ffd700",
+    color: "#f5a623",
     marginBottom: 24,
   },
   modalButtons: {
@@ -303,21 +323,21 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: "#0f3460",
+    backgroundColor: "#eee",
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
   },
   modalCancelText: {
-    color: "#fff",
+    color: "#333",
     fontSize: 16,
     fontWeight: "600",
   },
   modalConfirmButton: {
     flex: 1,
-    backgroundColor: "#e94560",
+    backgroundColor: "#f5a623",
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
   },
   modalConfirmText: {
