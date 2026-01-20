@@ -22,7 +22,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!studentId.trim() || !password.trim()) {
-      setError("Please enter both student ID and password");
+      setError("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
       return;
     }
 
@@ -34,7 +34,7 @@ export default function LoginScreen() {
       router.replace("/(tabs)");
     } catch (err: any) {
       setError(
-        err.response?.data?.message || "Login failed. Please try again.",
+        err.response?.data?.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
       );
     } finally {
       setIsLoading(false);
@@ -48,28 +48,25 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logo}>📚</Text>
           <Text style={styles.title}>Examda</Text>
-          <Text style={styles.subtitle}>Your Exam Companion</Text>
+          <Text style={styles.subtitle}>ยินดีต้อนรับ</Text>
         </View>
 
         <View style={styles.formContainer}>
-          <Text style={styles.label}>Student ID</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter your student ID"
-            placeholderTextColor="#999"
+            placeholder="ชื่อผู้ใช้"
+            placeholderTextColor="#9CA3AF"
             value={studentId}
             onChangeText={setStudentId}
             autoCapitalize="none"
             autoCorrect={false}
           />
 
-          <Text style={styles.label}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter your password"
-            placeholderTextColor="#999"
+            placeholder="รหัสผ่าน"
+            placeholderTextColor="#9CA3AF"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -88,7 +85,7 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
+              <Text style={styles.loginButtonText}>เริ่มเลย</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -100,64 +97,72 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5B7BC0",
   },
   content: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 40,
-  },
-  logo: {
-    fontSize: 64,
-    marginBottom: 16,
+    marginBottom: 48,
   },
   title: {
-    fontSize: 36,
+    fontSize: 48,
     fontWeight: "bold",
+    fontStyle: "italic",
     color: "#fff",
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#a0a0a0",
+    fontSize: 24,
+    color: "#fff",
+    fontWeight: "400",
   },
   formContainer: {
-    backgroundColor: "#16213e",
-    borderRadius: 16,
-    padding: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#e0e0e0",
-    marginBottom: 8,
+    width: "100%",
   },
   input: {
-    backgroundColor: "#0f3460",
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     fontSize: 16,
-    color: "#fff",
+    color: "#333",
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#0f3460",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   errorText: {
-    color: "#ff4757",
+    color: "#FFE4E4",
     fontSize: 14,
     marginBottom: 16,
     textAlign: "center",
+    backgroundColor: "rgba(255, 0, 0, 0.2)",
+    padding: 10,
+    borderRadius: 8,
   },
   loginButton: {
-    backgroundColor: "#e94560",
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: "#F5A623",
+    borderRadius: 25,
+    paddingVertical: 14,
     alignItems: "center",
     marginTop: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   loginButtonDisabled: {
     opacity: 0.7,
