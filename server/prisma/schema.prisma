@@ -1,0 +1,87 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  studentId      String   @unique
+  password       String // Hashed with bcrypt
+  firstName      String
+  lastName       String
+  email          String   @unique
+  coin           Int      @default(0)
+  equippedItemId Int? // Currently equipped shop item
+  expoPushToken  String? // For push notifications
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  exams        Exam[]
+  userItems    UserItem[]
+  equippedItem ShopItem?  @relation("EquippedItem", fields: [equippedItemId], references: [id])
+
+  @@index([studentId])
+}
+
+model Exam {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  description         String?  @db.Text
+  examDateTime        DateTime
+  remindBeforeMinutes Json     @default("[]") // Array of minutes: [1, 60, 1440]
+  isComplete          Boolean  @default(false)
+  userId              Int
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications ScheduledNotification[]
+
+  @@index([userId])
+  @@index([examDateTime])
+}
+
+model ShopItem {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Int
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  userItems  UserItem[]
+  equippedBy User[]     @relation("EquippedItem")
+}
+
+model UserItem {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  shopItemId  Int
+  purchasedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shopItem ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, shopItemId]) // User can only purchase each item once
+  @@index([userId])
+  @@index([shopItemId])
+}
+
+model ScheduledNotification {
+  id            Int      @id @default(autoincrement())
+  examId        Int
+  notifyAt      DateTime
+  expoPushToken String
+  sent          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([notifyAt, sent])
+  @@index([examId])
+}
