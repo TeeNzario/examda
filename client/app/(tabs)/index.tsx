@@ -7,28 +7,35 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import * as Notifications from "expo-notifications";
+import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
 import Header from "../../components/Header";
-import ExamCard from "../../components/ExamCard";
 import { examsApi } from "../../services/exams";
 import { Exam } from "../../types";
 
-type FilterType = "all" | "thisWeek" | "thisMonth";
+type FilterType = "thisWeek" | "thisMonth";
+
+// Get greeting based on time of day
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "GOOD\nMORNING!";
+  if (hour < 18) return "GOOD\nAFTERNOON!";
+  return "GOOD\nEVENING!";
+};
 
 export default function HomeScreen() {
   const [exams, setExams] = useState<Exam[]>([]);
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<FilterType>("thisWeek");
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
   const loadExams = async () => {
     try {
-      const filterParam = filter === "all" ? undefined : filter;
-      const data = await examsApi.getAll(filterParam);
+      const data = await examsApi.getAll(filter);
       setExams(data);
     } catch (error) {
       console.log("Error loading exams:", error);
@@ -49,106 +56,106 @@ export default function HomeScreen() {
     loadExams();
   };
 
-  // Test notification function
-  const sendTestNotification = async () => {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "📚 Test Notification",
-          body: "This is a test notification from Examda!",
-          data: { test: true },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 2,
-        },
-      });
-      Alert.alert("Success", "Notification scheduled! Wait 2 seconds...");
-    } catch (error) {
-      console.log("Notification error:", error);
-      Alert.alert("Error", "Failed to schedule notification");
-    }
-  };
-
-  const renderFilter = (label: string, value: FilterType) => (
-    <TouchableOpacity
-      style={[
-        styles.filterButton,
-        filter === value && styles.filterButtonActive,
-      ]}
-      onPress={() => setFilter(value)}
-    >
-      <Text
-        style={[styles.filterText, filter === value && styles.filterTextActive]}
+  const renderExamCard = ({ item }: { item: Exam }) => {
+    const examDate = new Date(item.examDateTime);
+    return (
+      <TouchableOpacity
+        style={styles.examCard}
+        onPress={() => router.push(`/list/${item.id}`)}
       >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderExam = ({ item }: { item: Exam }) => (
-    <TouchableOpacity onPress={() => router.push(`/list/${item.id}`)}>
-      <ExamCard exam={item} />
-    </TouchableOpacity>
-  );
+        <Text style={styles.examName}>{item.name}</Text>
+        <View style={styles.examDateRow}>
+          <View style={styles.timeBadge}>
+            <Text style={styles.timeText}>{format(examDate, "HH:mm")} น.</Text>
+          </View>
+          <Text style={styles.dateText}>
+            {format(examDate, "d MMMM yyyy", { locale: th })}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <Header />
 
-      <View style={styles.content}>
+      {/* Greeting */}
+      <View style={styles.greetingContainer}>
+        <Text style={styles.greetingText}>{getGreeting()}</Text>
+      </View>
+
+      {/* Exam List Container */}
+      <View style={styles.listContainer}>
+        {/* Title row */}
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Upcoming Exams</Text>
+          <Text style={styles.listTitle}>รายการสอบใกล้ๆ นี้</Text>
           <TouchableOpacity
             style={styles.viewAllButton}
             onPress={() => router.push("/list")}
           >
-            <Text style={styles.viewAllText}>View All</Text>
+            <Ionicons name="list" size={24} color="#333" />
           </TouchableOpacity>
         </View>
 
-        {/* Test Notification Button */}
-        <TouchableOpacity
-          style={styles.testNotificationButton}
-          onPress={sendTestNotification}
-        >
-          <Text style={styles.testNotificationText}>🔔 Test Notification</Text>
-        </TouchableOpacity>
-
+        {/* Filters */}
         <View style={styles.filterContainer}>
-          {renderFilter("All", "all")}
-          {renderFilter("This Week", "thisWeek")}
-          {renderFilter("This Month", "thisMonth")}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filter === "thisWeek" && styles.filterButtonActive,
+            ]}
+            onPress={() => setFilter("thisWeek")}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filter === "thisWeek" && styles.filterTextActive,
+              ]}
+            >
+              สัปดาห์นี้
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filter === "thisMonth" && styles.filterButtonActive,
+            ]}
+            onPress={() => setFilter("thisMonth")}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filter === "thisMonth" && styles.filterTextActive,
+              ]}
+            >
+              เดือนนี้
+            </Text>
+          </TouchableOpacity>
         </View>
 
+        {/* Exam List */}
         {isLoading ? (
           <ActivityIndicator
             size="large"
-            color="#e94560"
+            color="#5b7cfa"
             style={styles.loader}
           />
         ) : exams.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📚</Text>
-            <Text style={styles.emptyText}>No upcoming exams</Text>
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => router.push("/list/create")}
-            >
-              <Text style={styles.createButtonText}>Create an Exam</Text>
-            </TouchableOpacity>
+            <Text style={styles.emptyText}>ไม่มีการสอบ</Text>
           </View>
         ) : (
           <FlatList
             data={exams}
-            renderItem={renderExam}
+            renderItem={renderExamCard}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.list}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#e94560"
+                tintColor="#5b7cfa"
               />
             }
           />
@@ -161,11 +168,25 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#5b7cfa",
   },
-  content: {
+  greetingContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  greetingText: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#fff",
+    lineHeight: 44,
+  },
+  listContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
   titleRow: {
     flexDirection: "row",
@@ -173,30 +194,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
+  listTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1a1a1a",
   },
   viewAllButton: {
     padding: 8,
-  },
-  viewAllText: {
-    color: "#e94560",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  testNotificationButton: {
-    backgroundColor: "#2ecc71",
-    padding: 12,
+    backgroundColor: "#f0f0f0",
     borderRadius: 8,
-    marginBottom: 16,
-    alignItems: "center",
-  },
-  testNotificationText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
   filterContainer: {
     flexDirection: "row",
@@ -207,10 +213,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#16213e",
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   filterButtonActive: {
-    backgroundColor: "#e94560",
+    backgroundColor: "#f5a623",
+    borderColor: "#f5a623",
   },
   filterText: {
     color: "#888",
@@ -218,9 +226,44 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: "#fff",
+    fontWeight: "600",
   },
   list: {
-    paddingBottom: 20,
+    paddingBottom: 100,
+  },
+  examCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  examName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 8,
+  },
+  examDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  timeBadge: {
+    backgroundColor: "#f5a623",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  timeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  dateText: {
+    fontSize: 13,
+    color: "#666",
   },
   loader: {
     marginTop: 40,
@@ -230,24 +273,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   emptyText: {
-    fontSize: 18,
-    color: "#888",
-    marginBottom: 24,
-  },
-  createButton: {
-    backgroundColor: "#e94560",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  createButtonText: {
-    color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
+    color: "#888",
   },
 });

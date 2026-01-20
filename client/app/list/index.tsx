@@ -43,22 +43,22 @@ export default function ListScreen() {
 
   const handleComplete = async (exam: Exam) => {
     Alert.alert(
-      "Complete Exam",
-      `Mark "${exam.name}" as complete? You will earn 5 coins!`,
+      "ยืนยัน",
+      `ทำเครื่องหมาย "${exam.name}" ว่าเสร็จแล้ว? คุณจะได้รับ 5 coins!`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "ยกเลิก", style: "cancel" },
         {
-          text: "Complete",
+          text: "เสร็จแล้ว",
           onPress: async () => {
             try {
               await examsApi.complete(exam.id);
               await refreshUser();
               loadExams();
-              Alert.alert("Success", "Exam completed! +5 coins earned!");
+              Alert.alert("สำเร็จ", "สอบเสร็จแล้ว! +5 coins");
             } catch (error: any) {
               Alert.alert(
                 "Error",
-                error.response?.data?.message || "Failed to complete exam",
+                error.response?.data?.message || "ไม่สำเร็จ",
               );
             }
           },
@@ -78,41 +78,13 @@ export default function ListScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.title}>My Exams</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push("/list/create")}
-        >
-          <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.content}>
         {isLoading ? (
-          <ActivityIndicator
-            size="large"
-            color="#e94560"
-            style={styles.loader}
-          />
+          <ActivityIndicator size="large" color="#fff" style={styles.loader} />
         ) : exams.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📝</Text>
-            <Text style={styles.emptyText}>No exams yet</Text>
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => router.push("/list/create")}
-            >
-              <Text style={styles.createButtonText}>
-                Create Your First Exam
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.emptyText}>ยังไม่มีการสอบ</Text>
           </View>
         ) : (
           <FlatList
@@ -127,11 +99,28 @@ export default function ListScreen() {
                   setRefreshing(true);
                   loadExams();
                 }}
-                tintColor="#e94560"
+                tintColor="#fff"
               />
             }
           />
         )}
+      </View>
+
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>BACK</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push("/list/create")}
+        >
+          <Ionicons name="add" size={32} color="#fff" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -140,38 +129,15 @@ export default function ListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  backButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  addButton: {
-    backgroundColor: "#e94560",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "#5b7cfa",
   },
   content: {
     flex: 1,
     paddingHorizontal: 16,
+    paddingTop: 60,
   },
   list: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   loader: {
     marginTop: 40,
@@ -187,18 +153,40 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 20,
-    color: "#888",
+    color: "#fff",
     marginBottom: 24,
   },
-  createButton: {
-    backgroundColor: "#e94560",
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 8,
+  bottomNav: {
+    position: "absolute",
+    bottom: 40,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  createButtonText: {
+  backButton: {
+    backgroundColor: "#1a1a2e",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 30,
+  },
+  backButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
+  },
+  addButton: {
+    backgroundColor: "#f5a623",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });

@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { format } from "date-fns";
+import { th } from "date-fns/locale";
+import { Ionicons } from "@expo/vector-icons";
 import { Exam } from "../types";
 
 interface ExamCardProps {
@@ -18,95 +20,110 @@ export default function ExamCard({
 }: ExamCardProps) {
   const examDate = new Date(exam.examDateTime);
   const truncatedDescription = exam.description
-    ? exam.description.length > 20
-      ? exam.description.substring(0, 20) + "..."
+    ? exam.description.length > 30
+      ? exam.description.substring(0, 30) + "..."
       : exam.description
-    : "No description";
+    : "ไม่มีรายละเอียด";
 
   return (
     <View style={styles.card}>
-      <View style={styles.content}>
+      <View style={styles.header}>
         <Text style={styles.name}>{exam.name}</Text>
-        <Text style={styles.dateTime}>
-          📅 {format(examDate, "MMM dd, yyyy")} at {format(examDate, "HH:mm")}
-        </Text>
-        <Text style={styles.description}>{truncatedDescription}</Text>
+        {showActions && onEdit && (
+          <TouchableOpacity style={styles.editButton} onPress={onEdit}>
+            <Ionicons name="pencil" size={20} color="#333" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {showActions && (
-        <View style={styles.actions}>
-          {onEdit && (
-            <TouchableOpacity style={styles.editButton} onPress={onEdit}>
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          )}
-          {onComplete && (
-            <TouchableOpacity
-              style={styles.completeButton}
-              onPress={onComplete}
-            >
-              <Text style={styles.completeButtonText}>Complete</Text>
-            </TouchableOpacity>
-          )}
+      <View style={styles.dateTimeRow}>
+        <View style={styles.timeBadge}>
+          <Text style={styles.timeText}>{format(examDate, "HH:mm")} น.</Text>
         </View>
-      )}
+        <Text style={styles.dateText}>
+          {format(examDate, "d MMMM yyyy", { locale: th })}
+        </Text>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.description}>{truncatedDescription}</Text>
+        {showActions && onComplete && (
+          <TouchableOpacity style={styles.completeButton} onPress={onComplete}>
+            <Text style={styles.completeButtonText}>เสร็จแล้ว</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#16213e",
-    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#e94560",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  content: {
-    flex: 1,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
   name: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  dateTime: {
-    fontSize: 14,
-    color: "#a0a0a0",
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: "#888",
-  },
-  actions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 12,
-    gap: 8,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    flex: 1,
   },
   editButton: {
-    backgroundColor: "#0f3460",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    padding: 4,
   },
-  editButtonText: {
+  dateTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  timeBadge: {
+    backgroundColor: "#f5a623",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  timeText: {
     color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  dateText: {
     fontSize: 14,
-    fontWeight: "500",
+    color: "#333",
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  description: {
+    fontSize: 13,
+    color: "#888",
+    flex: 1,
   },
   completeButton: {
-    backgroundColor: "#2ecc71",
+    backgroundColor: "#f5a623",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   completeButtonText: {
     color: "#fff",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
 });

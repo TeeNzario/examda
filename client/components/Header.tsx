@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../context/AuthContext";
 
@@ -15,21 +15,8 @@ export default function Header({ showCoins = true }: HeaderProps) {
     <View style={styles.header}>
       <TouchableOpacity onPress={() => router.push("/profile")}>
         <View style={styles.userInfo}>
-          {user?.equippedItem?.imageUrl ? (
-            <Image
-              source={{ uri: user.equippedItem.imageUrl }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>
-                {user?.firstName?.charAt(0) || "?"}
-              </Text>
-            </View>
-          )}
-          <Text style={styles.greeting}>
-            Hello, {user?.firstName || "User"}!
-          </Text>
+          <Text style={styles.helloText}>Hello</Text>
+          <Text style={styles.nameText}>{user?.firstName || "User"}</Text>
         </View>
       </TouchableOpacity>
 
@@ -38,7 +25,6 @@ export default function Header({ showCoins = true }: HeaderProps) {
           style={styles.coinContainer}
           onPress={() => router.push("/(tabs)/shop")}
         >
-          <Text style={styles.coinIcon}>🪙</Text>
           <Text style={styles.coinText}>{user?.coin || 0}</Text>
         </TouchableOpacity>
       )}
@@ -51,55 +37,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: "#1a1a2e",
   },
   userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "column",
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#e94560",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  avatarText: {
+  helloText: {
+    fontSize: 14,
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+    opacity: 0.8,
   },
-  greeting: {
-    fontSize: 18,
-    fontWeight: "600",
+  nameText: {
+    fontSize: 20,
+    fontWeight: "700",
     color: "#fff",
   },
   coinContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#16213e",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: "#f5a623",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 20,
   },
-  coinIcon: {
-    fontSize: 18,
-    marginRight: 6,
-  },
   coinText: {
-    color: "#ffd700",
-    fontSize: 16,
-    fontWeight: "600",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
   },
 });
