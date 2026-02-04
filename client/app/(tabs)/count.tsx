@@ -334,15 +334,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   modalConfirmButton: {
-    flex: 1,
     backgroundColor: "#f5a623",
-    paddingVertical: 14,
+    paddingVertical: 10,
     borderRadius: 12,
     alignItems: "center",
+    paddingHorizontal: 20,
   },
   modalConfirmText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "600",
   },
 });
