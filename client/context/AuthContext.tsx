@@ -12,11 +12,14 @@ import { Platform } from "react-native";
 import { User } from "../types";
 import { authApi } from "../services/auth";
 import { usersApi } from "../services/users";
+import * as db from "../services/database";
+import { checkIsOnline } from "../hooks/useNetworkStatus";
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  isOnline: boolean;
   login: (studentId: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -29,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
     loadStoredAuth();
@@ -39,17 +43,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedToken = await SecureStore.getItemAsync("authToken");
       if (storedToken) {
         setToken(storedToken);
-        // Fetch user profile
-        const userProfile = await usersApi.getProfile();
-        setUser(userProfile);
-        // Register push notifications
-        await registerForPushNotifications();
+
+        // Check if online
+        const online = await checkIsOnline();
+        setIsOnline(online);
+
+        if (online) {
+          try {
+            // Fetch user profile from server
+            const userProfile = await usersApi.getProfile();
+            setUser(userProfile);
+            // Cache user data locally
+            await db.saveUserToCache(userProfile);
+            // Register push notifications
+            await registerForPushNotifications();
+          } catch (error) {
+            console.log("[Auth] Failed to fetch profile, trying cache:", error);
+            // Fall back to cached user data
+            await loadCachedUser();
+          }
+        } else {
+          // Offline - load from cache
+          await loadCachedUser();
+        }
       }
     } catch (error) {
       console.log("Error loading auth:", error);
       await SecureStore.deleteItemAsync("authToken");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadCachedUser = async () => {
+    try {
+      const cachedUser = await db.getCachedUser();
+      if (cachedUser) {
+        // Convert cached user to User type
+        const user: User = {
+          id: cachedUser.id,
+          studentId: cachedUser.studentId,
+          firstName: cachedUser.firstName,
+          lastName: cachedUser.lastName,
+          email: cachedUser.email,
+          coin: cachedUser.coin,
+          equippedItem: cachedUser.equippedItem,
+        };
+        setUser(user);
+        console.log("[Auth] Loaded user from cache");
+      }
+    } catch (error) {
+      console.log("[Auth] Failed to load cached user:", error);
     }
   };
 
@@ -99,26 +143,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await SecureStore.setItemAsync("authToken", response.access_token);
     setToken(response.access_token);
     setUser(response.user);
+    setIsOnline(true);
+
+    // Cache user data locally
+    await db.saveUserToCache(response.user);
+
     // Register push notifications after login
     await registerForPushNotifications();
   };
 
   const logout = async () => {
     await SecureStore.deleteItemAsync("authToken");
+    // Clear cached user data
+    await db.clearUserCache();
     setToken(null);
     setUser(null);
   };
 
   const refreshUser = async () => {
     if (token) {
-      const userProfile = await usersApi.getProfile();
-      setUser(userProfile);
+      const online = await checkIsOnline();
+      setIsOnline(online);
+
+      if (online) {
+        try {
+          const userProfile = await usersApi.getProfile();
+          setUser(userProfile);
+          // Update cache
+          await db.saveUserToCache(userProfile);
+        } catch (error) {
+          console.log("[Auth] Failed to refresh user:", error);
+        }
+      }
     }
   };
 
   const updateUserCoins = (coins: number) => {
     if (user) {
-      setUser({ ...user, coin: coins });
+      const updatedUser = { ...user, coin: coins };
+      setUser(updatedUser);
+      // Update cache
+      db.updateCachedUserCoins(coins).catch(console.error);
     }
   };
 
@@ -128,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         token,
         isLoading,
+        isOnline,
         login,
         logout,
         refreshUser,

@@ -61,3 +61,34 @@ export interface InventoryItem {
   purchasedAt: string;
   isEquipped: boolean;
 }
+
+// Sync status for offline-first support
+export type SyncStatus = "pending" | "synced" | "conflict";
+
+// Local exam with sync metadata
+export interface LocalExam {
+  id: number;
+  serverId: number | null;
+  name: string;
+  description: string | null;
+  examDateTime: string;
+  remindBeforeMinutes: number[];
+  isComplete: boolean;
+  syncStatus: SyncStatus;
+  createdAt: string;
+  updatedAt: string;
+  locallyModifiedAt: string | null;
+  deletedLocally: boolean;
+}
+
+// Cached user for offline display
+export interface CachedUser {
+  id: number;
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  coin: number;
+  equippedItem: ShopItem | null;
+  updatedAt: string;
+}

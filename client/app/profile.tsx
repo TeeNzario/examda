@@ -14,10 +14,12 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useIsOnline } from "../context/NetworkContext";
 import { usersApi } from "../services/users";
 
 export default function ProfileScreen() {
   const { user, logout, refreshUser } = useAuth();
+  const isOnline = useIsOnline();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -57,6 +59,18 @@ export default function ProfileScreen() {
     }
   };
 
+  const handlePasswordPress = () => {
+    if (!isOnline) {
+      Alert.alert(
+        "ไม่มีการเชื่อมต่อ",
+        "การเปลี่ยนรหัสผ่านต้องการการเชื่อมต่ออินเทอร์เน็ต",
+        [{ text: "ตกลง" }],
+      );
+      return;
+    }
+    setShowPasswordModal(true);
+  };
+
   const handleLogout = () => {
     Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่ไหม?", [
       { text: "ยกเลิก", style: "cancel" },
@@ -73,24 +87,48 @@ export default function ProfileScreen() {
 
   const fullName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
 
+  // Render avatar - show placeholder when offline or no image
+  const renderAvatar = () => {
+    const hasImage = user?.equippedItem?.imageUrl;
+
+    if (!isOnline || !hasImage) {
+      // Show offline placeholder
+      return (
+        <View style={styles.avatarPlaceholder}>
+          <Ionicons
+            name={isOnline ? "person" : "cloud-offline-outline"}
+            size={48}
+            color="#fff"
+          />
+        </View>
+      );
+    }
+
+    return (
+      <Image
+        source={{ uri: user.equippedItem!.imageUrl! }}
+        style={styles.avatarImage}
+      />
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Offline Banner */}
+        {!isOnline && (
+          <View style={styles.offlineBanner}>
+            <Ionicons name="cloud-offline-outline" size={16} color="#fff" />
+            <Text style={styles.offlineBannerText}>Offline Mode</Text>
+          </View>
+        )}
+
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatarContainer}>
-            {user?.equippedItem?.imageUrl ? (
-              <Image
-                source={{ uri: user.equippedItem.imageUrl }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder} />
-            )}
-          </View>
+          <View style={styles.avatarContainer}>{renderAvatar()}</View>
           <Text style={styles.userName}>{user?.firstName || "User"}</Text>
         </View>
 
@@ -118,22 +156,55 @@ export default function ProfileScreen() {
 
           <View style={styles.divider} />
 
-          <TouchableOpacity
-            style={styles.infoRow}
-            onPress={() => setShowPasswordModal(true)}
-          >
-            <Text style={styles.infoLabel}>รหัสผ่าน</Text>
+          {/* Coin Balance */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>เหรียญ</Text>
             <View style={styles.infoValueRow}>
-              <Text style={styles.infoValue}>**************</Text>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+              <Text style={styles.infoValue}>🪙 {user?.coin ?? 0}</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity
+            style={[styles.infoRow, !isOnline && styles.disabledRow]}
+            onPress={handlePasswordPress}
+            disabled={!isOnline}
+          >
+            <Text style={[styles.infoLabel, !isOnline && styles.disabledText]}>
+              รหัสผ่าน
+            </Text>
+            <View style={styles.infoValueRow}>
+              {!isOnline ? (
+                <Text style={styles.offlineHint}>ต้องการอินเทอร์เน็ต</Text>
+              ) : (
+                <Text style={styles.infoValue}>**************</Text>
+              )}
+              <Ionicons
+                name={isOnline ? "chevron-forward" : "lock-closed"}
+                size={20}
+                color={isOnline ? "#ccc" : "#999"}
+              />
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Buttons */}
         <TouchableOpacity
-          style={styles.inventoryButton}
-          onPress={() => router.push("/(tabs)/inventory")}
+          style={[
+            styles.inventoryButton,
+            !isOnline && styles.inventoryButtonDisabled,
+          ]}
+          onPress={() => {
+            if (isOnline) {
+              router.push("/(tabs)/inventory");
+            } else {
+              Alert.alert(
+                "ไม่มีการเชื่อมต่อ",
+                "Inventory ต้องการการเชื่อมต่ออินเทอร์เน็ต",
+              );
+            }
+          }}
         >
           <Text style={styles.inventoryButtonText}>INVENTORY</Text>
         </TouchableOpacity>
@@ -217,6 +288,22 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 40,
   },
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  offlineBannerText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   avatarSection: {
     alignItems: "center",
     marginBottom: 24,
@@ -235,7 +322,9 @@ const styles = StyleSheet.create({
   avatarPlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#f5a623",
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   userName: {
     fontSize: 28,
@@ -258,10 +347,16 @@ const styles = StyleSheet.create({
   infoRow: {
     paddingVertical: 12,
   },
+  disabledRow: {
+    opacity: 0.6,
+  },
   infoLabel: {
     fontSize: 14,
     color: "#888",
     marginBottom: 4,
+  },
+  disabledText: {
+    color: "#aaa",
   },
   infoValueRow: {
     flexDirection: "row",
@@ -271,6 +366,12 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 16,
     color: "#1a1a1a",
+    flex: 1,
+  },
+  offlineHint: {
+    fontSize: 14,
+    color: "#999",
+    fontStyle: "italic",
     flex: 1,
   },
   divider: {
@@ -283,6 +384,9 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
     marginBottom: 12,
+  },
+  inventoryButtonDisabled: {
+    opacity: 0.7,
   },
   inventoryButtonText: {
     color: "#1a1a1a",

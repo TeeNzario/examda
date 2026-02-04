@@ -12,36 +12,97 @@ import {
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import Header from "../../components/Header";
+import OfflineScreen from "../../components/OfflineScreen";
 import { inventoryApi } from "../../services/inventory";
 import { InventoryItem } from "../../types";
 import { useAuth } from "../../context/AuthContext";
+import { useIsOnline } from "../../context/NetworkContext";
+import { checkIsOnline } from "../../hooks/useNetworkStatus";
 
 export default function InventoryScreen() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [equipping, setEquipping] = useState<number | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const { refreshUser } = useAuth();
+  const isOnline = useIsOnline();
 
   const loadItems = async () => {
     try {
+      setIsLoading(true);
       const data = await inventoryApi.getInventory();
       setItems(data);
+      setIsUnlocked(true); // Successfully loaded = unlocked
     } catch (error) {
       console.log("Error loading inventory:", error);
+      setIsUnlocked(false);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
 
+  // Handle retry from offline screen
+  const handleRetry = async () => {
+    const online = await checkIsOnline();
+    if (online) {
+      await loadItems();
+    } else {
+      throw new Error("Still offline");
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      loadItems();
+      // Reset unlock state on focus
+      const checkAndLoad = async () => {
+        const online = await checkIsOnline();
+        if (online) {
+          loadItems();
+        } else {
+          setIsUnlocked(false);
+          setIsLoading(false);
+        }
+      };
+      checkAndLoad();
     }, []),
   );
 
+  // Show offline screen if not unlocked and not online
+  if (!isUnlocked && !isOnline) {
+    return (
+      <OfflineScreen
+        message="Inventory requires an internet connection to view and equip items."
+        onRetry={handleRetry}
+      />
+    );
+  }
+
+  // If was unlocked but now offline and trying to load, show loading
+  if (isLoading && !isUnlocked) {
+    return (
+      <View style={styles.container}>
+        <Header showCoins={false} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Connecting...</Text>
+        </View>
+      </View>
+    );
+  }
+
   const handleEquip = async (item: InventoryItem) => {
+    // Check connectivity before equip action
+    const online = await checkIsOnline();
+    if (!online) {
+      Alert.alert(
+        "ไม่มีการเชื่อมต่อ",
+        "กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่อสวมใส่ไอเทม",
+      );
+      return;
+    }
+
     if (item.isEquipped) {
       // Already equipped, unequip it
       setEquipping(item.id);
@@ -145,6 +206,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#5b7cfa",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 16,
+    marginTop: 12,
   },
   inventoryContainer: {
     flex: 1,

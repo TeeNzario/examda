@@ -12,36 +12,98 @@ import {
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import Header from "../../components/Header";
+import OfflineScreen from "../../components/OfflineScreen";
 import { shopApi } from "../../services/shop";
 import { ShopItem } from "../../types";
 import { useAuth } from "../../context/AuthContext";
+import { useIsOnline } from "../../context/NetworkContext";
+import { checkIsOnline } from "../../hooks/useNetworkStatus";
 
 export default function ShopScreen() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [purchasing, setPurchasing] = useState<number | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const { user, refreshUser } = useAuth();
+  const isOnline = useIsOnline();
 
   const loadItems = async () => {
     try {
+      setIsLoading(true);
       const data = await shopApi.getItems();
       setItems(data);
+      setIsUnlocked(true); // Successfully loaded = unlocked
     } catch (error) {
       console.log("Error loading shop items:", error);
+      setIsUnlocked(false);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
 
+  // Handle retry from offline screen
+  const handleRetry = async () => {
+    const online = await checkIsOnline();
+    if (online) {
+      await loadItems();
+    } else {
+      throw new Error("Still offline");
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      loadItems();
+      // Reset unlock state on focus
+      const checkAndLoad = async () => {
+        const online = await checkIsOnline();
+        if (online) {
+          loadItems();
+        } else {
+          setIsUnlocked(false);
+          setIsLoading(false);
+        }
+      };
+      checkAndLoad();
     }, []),
   );
 
+  // Show offline screen if not unlocked and not online
+  // Page stays unlocked once loaded, even if network drops briefly
+  if (!isUnlocked && !isOnline) {
+    return (
+      <OfflineScreen
+        message="Shop requires an internet connection to browse and purchase items."
+        onRetry={handleRetry}
+      />
+    );
+  }
+
+  // If was unlocked but now offline and trying to load, show loading
+  if (isLoading && !isUnlocked) {
+    return (
+      <View style={styles.container}>
+        <Header />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Connecting...</Text>
+        </View>
+      </View>
+    );
+  }
+
   const handlePurchase = async (item: ShopItem) => {
+    // Check connectivity before purchase
+    const online = await checkIsOnline();
+    if (!online) {
+      Alert.alert(
+        "ไม่มีการเชื่อมต่อ",
+        "กรุณาเชื่อมต่ออินเทอร์เน็ตเพื่อซื้อไอเทม",
+      );
+      return;
+    }
+
     if (item.isPurchased) {
       Alert.alert("แจ้งเตือน", "คุณซื้อไอเทมนี้แล้ว");
       return;
@@ -148,6 +210,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#5b7cfa",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 16,
+    marginTop: 12,
   },
   shopContainer: {
     flex: 1,
