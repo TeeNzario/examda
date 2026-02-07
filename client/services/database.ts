@@ -477,13 +477,23 @@ export const setLastSyncTime = async (time: string): Promise<void> => {
   );
 };
 
-// Clear all data (for logout/reset)
-export const clearAllData = async (): Promise<void> => {
+// Reset local data (clears user data tables while keeping schema intact)
+// IMPORTANT: Cancel all scheduled notifications BEFORE calling this function
+export const resetLocalData = async (): Promise<void> => {
   const database = getDatabase();
-  await database.execAsync(`
-    DELETE FROM exams;
-    DELETE FROM notification_schedules;
-    DELETE FROM user_cache;
-    DELETE FROM sync_metadata;
-  `);
+  await database.withTransactionAsync(async () => {
+    // Clear child tables first (due to foreign key dependencies)
+    await database.runAsync("DELETE FROM notification_schedules");
+    // Clear parent tables
+    await database.runAsync("DELETE FROM exams");
+    await database.runAsync("DELETE FROM user_cache");
+  });
+  console.log("[Database] Local data reset complete");
+};
+
+// Clear sync metadata (optional, call if full reset needed)
+export const clearSyncMetadata = async (): Promise<void> => {
+  const database = getDatabase();
+  await database.runAsync("DELETE FROM sync_metadata");
+  console.log("[Database] Sync metadata cleared");
 };

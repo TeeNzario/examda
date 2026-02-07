@@ -13,6 +13,7 @@ import { User } from "../types";
 import { authApi } from "../services/auth";
 import { usersApi } from "../services/users";
 import * as db from "../services/database";
+import { cancelAllScheduledNotifications } from "../services/notifications";
 import { checkIsOnline } from "../hooks/useNetworkStatus";
 
 interface AuthContextType {
@@ -22,6 +23,7 @@ interface AuthContextType {
   isOnline: boolean;
   login: (studentId: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  resetAppData: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUserCoins: (coins: number) => void;
 }
@@ -154,10 +156,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await SecureStore.deleteItemAsync("authToken");
-    // Clear cached user data
-    await db.clearUserCache();
+    // Cancel all scheduled notifications before clearing data
+    await cancelAllScheduledNotifications();
+    // Clear all local data
+    await db.resetLocalData();
     setToken(null);
     setUser(null);
+  };
+
+  const resetAppData = async () => {
+    // Cancel all scheduled notifications first
+    await cancelAllScheduledNotifications();
+    // Clear all local data
+    await db.resetLocalData();
+    console.log("[Auth] App data reset complete");
   };
 
   const refreshUser = async () => {
@@ -196,6 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isOnline,
         login,
         logout,
+        resetAppData,
         refreshUser,
         updateUserCoins,
       }}
