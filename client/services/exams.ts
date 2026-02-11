@@ -3,6 +3,7 @@ import { Exam, CreateExamDto, UpdateExamDto } from "../types";
 import * as db from "./database";
 import { checkIsOnline } from "../hooks/useNetworkStatus";
 import { syncExams } from "./syncService";
+import * as notificationService from "./notificationService";
 
 /**
  * Offline-first exams service
@@ -36,6 +37,43 @@ export const examsApi = {
     }
 
     return exams;
+  },
+
+  /**
+   * Get all exams with sync status - for displaying sync indicators
+   */
+  getAllWithSync: async (
+    filter?: "thisWeek" | "thisMonth",
+  ): Promise<
+    { exam: Exam; syncStatus: db.LocalExam["syncStatus"]; localId: number }[]
+  > => {
+    // Always read from local database first
+    const localExams = await db.getExamsLocalByFilter(filter);
+
+    // Convert LocalExam to Exam format with sync status
+    const examsWithSync = localExams.map((local) => ({
+      exam: {
+        id: local.serverId ?? local.id,
+        name: local.name,
+        description: local.description,
+        examDateTime: local.examDateTime,
+        remindBeforeMinutes: local.remindBeforeMinutes,
+        isComplete: local.isComplete,
+        userId: 0,
+        createdAt: local.createdAt,
+        updatedAt: local.updatedAt,
+      } as Exam,
+      syncStatus: local.syncStatus,
+      localId: local.id,
+    }));
+
+    // Trigger background sync if online
+    const isOnline = await checkIsOnline();
+    if (isOnline) {
+      syncExams().catch(console.error);
+    }
+
+    return examsWithSync;
   },
 
   /**
@@ -98,6 +136,23 @@ export const examsApi = {
       syncStatus: "pending",
     });
 
+    console.log(`[Exams] Created local exam with id: ${localId}`);
+
+    // Schedule local notifications
+    if (data.remindBeforeMinutes && data.remindBeforeMinutes.length > 0) {
+      try {
+        await notificationService.scheduleExamNotifications(
+          localId,
+          data.name,
+          new Date(data.examDateTime),
+          data.remindBeforeMinutes,
+        );
+      } catch (error) {
+        console.error("[Exams] Error scheduling notifications:", error);
+        // Continue even if notifications fail
+      }
+    }
+
     // Create local exam object to return
     const localExam: Exam = {
       id: localId,
@@ -118,6 +173,11 @@ export const examsApi = {
         const response = await api.post<Exam>("/exams", data);
         // Update local record with server ID
         await db.updateExamServerId(localId, response.data.id);
+        // Update notification schedules with server ID
+        await db.updateNotificationSchedulesServerId(localId, response.data.id);
+        console.log(
+          `[Exams] Synced exam to server with id: ${response.data.id}`,
+        );
         return response.data;
       } catch (error) {
         console.log("[Exams] Failed to sync create, will retry later:", error);
@@ -166,6 +226,21 @@ export const examsApi = {
       updatedAt: updatedLocal.updatedAt,
     };
 
+    // Reschedule notifications if exam date/time or reminders changed
+    if (data.examDateTime || data.remindBeforeMinutes !== undefined) {
+      try {
+        await notificationService.rescheduleExamNotifications(
+          localExam.id,
+          updatedLocal.name,
+          new Date(updatedLocal.examDateTime),
+          updatedLocal.remindBeforeMinutes,
+        );
+      } catch (error) {
+        console.error("[Exams] Error rescheduling notifications:", error);
+        // Continue even if rescheduling fails
+      }
+    }
+
     // Try to sync with server if online
     const isOnline = await checkIsOnline();
     if (isOnline && localExam.serverId) {
@@ -192,6 +267,14 @@ export const examsApi = {
 
     if (!localExam) {
       throw new Error("Exam not found");
+    }
+
+    // Cancel scheduled notifications
+    try {
+      await notificationService.cancelExamNotifications(localExam.id);
+    } catch (error) {
+      console.error("[Exams] Error cancelling notifications:", error);
+      // Continue even if cancellation fails
     }
 
     // Mark as deleted locally
@@ -224,6 +307,14 @@ export const examsApi = {
 
     if (!localExam) {
       throw new Error("Exam not found");
+    }
+
+    // Cancel scheduled notifications (exam completed, no need for reminders)
+    try {
+      await notificationService.cancelExamNotifications(localExam.id);
+    } catch (error) {
+      console.error("[Exams] Error cancelling notifications:", error);
+      // Continue even if cancellation fails
     }
 
     // Update locally

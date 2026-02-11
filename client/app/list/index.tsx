@@ -13,11 +13,17 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import ExamCard from "../../components/ExamCard";
 import { examsApi } from "../../services/exams";
-import { Exam } from "../../types";
+import { Exam, SyncStatus } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
+type ExamWithSync = {
+  exam: Exam;
+  syncStatus: SyncStatus;
+  localId: number;
+};
+
 export default function ListScreen() {
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [exams, setExams] = useState<ExamWithSync[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
@@ -25,7 +31,7 @@ export default function ListScreen() {
 
   const loadExams = async () => {
     try {
-      const data = await examsApi.getAll();
+      const data = await examsApi.getAllWithSync();
       setExams(data);
     } catch (error) {
       console.log("Error loading exams:", error);
@@ -67,12 +73,13 @@ export default function ListScreen() {
     );
   };
 
-  const renderExam = ({ item }: { item: Exam }) => (
+  const renderExam = ({ item }: { item: ExamWithSync }) => (
     <ExamCard
-      exam={item}
+      exam={item.exam}
+      syncStatus={item.syncStatus}
       showActions
-      onEdit={() => router.push(`/list/${item.id}`)}
-      onComplete={() => handleComplete(item)}
+      onEdit={() => router.push(`/list/${item.localId}`)}
+      onComplete={() => handleComplete(item.exam)}
     />
   );
 
@@ -90,7 +97,7 @@ export default function ListScreen() {
           <FlatList
             data={exams}
             renderItem={renderExam}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => item.localId.toString()}
             contentContainerStyle={styles.list}
             refreshControl={
               <RefreshControl

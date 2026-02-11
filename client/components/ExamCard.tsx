@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
-import { Exam } from "../types";
+import { Exam, SyncStatus } from "../types";
 
 interface ExamCardProps {
   exam: Exam;
+  syncStatus?: SyncStatus;
   onEdit?: () => void;
   onComplete?: () => void;
   showActions?: boolean;
@@ -14,6 +15,7 @@ interface ExamCardProps {
 
 export default function ExamCard({
   exam,
+  syncStatus,
   onEdit,
   onComplete,
   showActions = false,
@@ -25,10 +27,37 @@ export default function ExamCard({
       : exam.description
     : "ไม่มีรายละเอียด";
 
+  // Determine sync icon
+  const getSyncIcon = () => {
+    if (!syncStatus) return null;
+
+    if (syncStatus === "synced") {
+      return (
+        <Ionicons
+          name="cloud-done"
+          size={18}
+          color="#4CAF50"
+          style={styles.syncIcon}
+        />
+      );
+    }
+    return (
+      <Ionicons
+        name="cloud-offline-outline"
+        size={18}
+        color="#9e9e9e"
+        style={styles.syncIcon}
+      />
+    );
+  };
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.name}>{exam.name}</Text>
+        <View style={styles.nameContainer}>
+          {getSyncIcon()}
+          <Text style={styles.name}>{exam.name}</Text>
+        </View>
         {showActions && onEdit && (
           <TouchableOpacity style={styles.editButton} onPress={onEdit}>
             <Ionicons name="pencil" size={20} color="#333" />
@@ -74,6 +103,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 8,
+  },
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  syncIcon: {
+    marginRight: 6,
   },
   name: {
     fontSize: 18,
