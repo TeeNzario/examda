@@ -50,7 +50,18 @@ export const syncExams = async (): Promise<{
             examDateTime: exam.examDateTime,
             remindBeforeMinutes: exam.remindBeforeMinutes,
           });
+          // Update exam with server ID
           await db.updateExamServerId(exam.id, response.data.id);
+          // Update notification schedules with server ID
+          await db.updateNotificationSchedulesServerId(
+            exam.id,
+            response.data.id,
+          );
+          // Mark notification schedules as synced (server creates its own ScheduledNotification records)
+          await db.markNotificationSchedulesSynced(exam.id);
+          console.log(
+            `[Sync] Created exam ${response.data.id} on server, notification schedules synced`,
+          );
           pushed++;
         } else {
           // Update existing exam on server
@@ -62,6 +73,8 @@ export const syncExams = async (): Promise<{
             isComplete: exam.isComplete,
           });
           await db.markExamAsSynced(exam.id);
+          // Mark notification schedules as synced
+          await db.markNotificationSchedulesSynced(exam.id);
           pushed++;
         }
       } catch (error: any) {

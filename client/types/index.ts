@@ -92,3 +92,9 @@ export interface CachedUser {
   equippedItem: ShopItem | null;
   updatedAt: string;
 }
+
+// Exam with sync status for UI display
+export interface ExamWithSync extends Exam {
+  syncStatus: SyncStatus;
+  localId: number;
+}

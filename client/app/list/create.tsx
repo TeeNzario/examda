@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as Notifications from "expo-notifications";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { examsApi } from "../../services/exams";
@@ -41,39 +40,6 @@ export default function CreateExamScreen() {
     );
   };
 
-  const scheduleLocalNotifications = async (
-    examName: string,
-    examDate: Date,
-    reminderMinutes: number[],
-  ) => {
-    for (const minutes of reminderMinutes) {
-      const notifyAt = new Date(examDate.getTime() - minutes * 60 * 1000);
-      if (notifyAt <= new Date()) continue;
-
-      const secondsUntil = Math.floor((notifyAt.getTime() - Date.now()) / 1000);
-      let timeString = "";
-      if (minutes === 1) timeString = "อีก 1 นาทีจะสอบคร้าบบ";
-      else if (minutes === 60) timeString = "อีก 1 ชั่วโมงจะสอบคร้าบบ";
-      else if (minutes === 1440) timeString = "พรุ่งนี้จะสอบคร้าบบ";
-
-      try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "📚 เตือนการสอบคร้าบบ",
-            body: `${examName} ${timeString}!`,
-            data: { examName },
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: secondsUntil,
-          },
-        });
-      } catch (error) {
-        console.log("Error scheduling notification:", error);
-      }
-    }
-  };
-
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert("ข้อผิดพลาด", "กรุณากรอกชื่อการสอบ");
@@ -87,20 +53,13 @@ export default function CreateExamScreen() {
 
     setIsLoading(true);
     try {
+      // Notification scheduling is now handled by exams.ts -> notificationService.ts
       await examsApi.create({
         name: name.trim(),
         description: description.trim() || undefined,
         examDateTime: examDateTime.toISOString(),
         remindBeforeMinutes: selectedNotifications,
       });
-
-      if (selectedNotifications.length > 0) {
-        await scheduleLocalNotifications(
-          name.trim(),
-          examDateTime,
-          selectedNotifications,
-        );
-      }
 
       Alert.alert("สำเร็จ", "สร้างการสอบเรียบร้อย!", [
         { text: "ตกลง", onPress: () => router.back() },

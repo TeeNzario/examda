@@ -457,6 +457,40 @@ export const deleteNotificationSchedulesForExam = async (
   );
 };
 
+// Get pending notification schedules for sync
+export const getPendingNotificationSchedules = async (): Promise<
+  NotificationSchedule[]
+> => {
+  const database = getDatabase();
+  const rows = await database.getAllAsync<NotificationSchedule>(
+    "SELECT * FROM notification_schedules WHERE syncStatus = 'pending'",
+  );
+  return rows;
+};
+
+// Mark notification schedules as synced
+export const markNotificationSchedulesSynced = async (
+  examId: number,
+): Promise<void> => {
+  const database = getDatabase();
+  await database.runAsync(
+    "UPDATE notification_schedules SET syncStatus = 'synced' WHERE examId = ?",
+    [examId],
+  );
+};
+
+// Update examServerId after exam sync
+export const updateNotificationSchedulesServerId = async (
+  examId: number,
+  examServerId: number,
+): Promise<void> => {
+  const database = getDatabase();
+  await database.runAsync(
+    "UPDATE notification_schedules SET examServerId = ? WHERE examId = ?",
+    [examServerId, examId],
+  );
+};
+
 // ==================== SYNC METADATA OPERATIONS ====================
 
 // Get last sync time
