@@ -112,7 +112,7 @@ Notifications are handled **entirely on the client** using Expo local notificati
 
 ---
 
-## 🗃 Database Schema
+## Database Schema
 
 ### Remote (MySQL via Prisma)
 
