@@ -229,7 +229,7 @@ Scan the QR code with Expo Go or press `i` for iOS simulator / `a` for Android e
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 
 ```
 examda/
