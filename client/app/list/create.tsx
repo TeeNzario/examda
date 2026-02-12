@@ -142,6 +142,7 @@ export default function CreateExamScreen() {
               display="default"
               onChange={onDateChange}
               minimumDate={new Date()}
+              style={{ marginBottom: 10 }}
             />
           )}
 
@@ -208,14 +209,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#5b7cfa",
+    padding: 20,
   },
   scrollView: {
     flex: 1,
+    
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 80,
-    paddingBottom: 40,
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   card: {
     backgroundColor: "#fff",
@@ -241,6 +244,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     borderRadius: 12,
     padding: 16,
+    marginBottom: 10,
   },
   dateTimeText: {
     fontSize: 15,
@@ -272,6 +276,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   saveButton: {
+    width: "100%",
     backgroundColor: "#f5a623",
     paddingVertical: 18,
     borderRadius: 30,
@@ -287,6 +292,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   backButton: {
+    width: "100%",
     backgroundColor: "#1a1a2e",
     paddingVertical: 18,
     borderRadius: 30,
