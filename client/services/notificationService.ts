@@ -4,7 +4,8 @@ import * as db from "./database";
 /**
  * Notification Service
  * Handles all local notification scheduling via Expo Notifications
- * and persists notification metadata to SQLite
+ * and persists notification metadata to SQLite.
+ * Fully offline-first: no server dependency.
  */
 
 interface NotificationScheduleResult {
@@ -141,7 +142,6 @@ export const cancelExamNotifications = async (
             `[NotificationService] Failed to cancel notification ${schedule.notificationId}:`,
             error,
           );
-          // Continue with other cancellations even if one fails
         }
       }
     }
@@ -183,7 +183,6 @@ export const rescheduleExamNotifications = async (
 
 /**
  * Request notification permissions
- * Should be called early in app lifecycle
  */
 export const requestNotificationPermissions = async (): Promise<boolean> => {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();

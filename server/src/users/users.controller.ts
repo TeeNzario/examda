@@ -8,11 +8,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import {
-  UpdateProfileDto,
-  UpdatePushTokenDto,
-  CreateUserDto,
-} from './dto/update-user.dto';
+import { UpdateProfileDto, CreateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('users')
@@ -35,12 +31,6 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async updateProfile(@Request() req, @Body() updateDto: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.id, updateDto);
-  }
-
-  @Patch('push-token')
-  @UseGuards(JwtAuthGuard)
-  async updatePushToken(@Request() req, @Body() dto: UpdatePushTokenDto) {
-    return this.usersService.updatePushToken(req.user.id, dto);
   }
 
   @Patch('coins/add')
