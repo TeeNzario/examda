@@ -3,7 +3,8 @@ import { Exam } from "../types";
 import * as db from "./database";
 
 /**
- * Sync service handles bidirectional sync between SQLite and remote API
+ * Sync service handles bidirectional sync between SQLite and remote API.
+ * Only syncs exam data — notifications are handled entirely locally.
  */
 
 let isSyncing = false;
@@ -57,11 +58,7 @@ export const syncExams = async (): Promise<{
             exam.id,
             response.data.id,
           );
-          // Mark notification schedules as synced (server creates its own ScheduledNotification records)
-          await db.markNotificationSchedulesSynced(exam.id);
-          console.log(
-            `[Sync] Created exam ${response.data.id} on server, notification schedules synced`,
-          );
+          console.log(`[Sync] Created exam ${response.data.id} on server`);
           pushed++;
         } else {
           // Update existing exam on server
@@ -73,8 +70,6 @@ export const syncExams = async (): Promise<{
             isComplete: exam.isComplete,
           });
           await db.markExamAsSynced(exam.id);
-          // Mark notification schedules as synced
-          await db.markNotificationSchedulesSynced(exam.id);
           pushed++;
         }
       } catch (error: any) {

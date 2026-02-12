@@ -14,11 +14,6 @@ export class UpdateProfileDto {
   password?: string;
 }
 
-export class UpdatePushTokenDto {
-  @IsString()
-  expoPushToken: string;
-}
-
 export class CreateUserDto {
   @IsNotEmpty()
   @IsString()

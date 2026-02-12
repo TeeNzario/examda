@@ -18,12 +18,6 @@ export class ExamsService {
     const examDateTime = new Date(dto.examDateTime);
     const remindBeforeMinutes = dto.remindBeforeMinutes || [];
 
-    // Get user's push token for notifications
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { expoPushToken: true },
-    });
-
     const exam = await this.prisma.exam.create({
       data: {
         name: dto.name,
@@ -33,19 +27,6 @@ export class ExamsService {
         userId,
       },
     });
-
-    // Schedule notifications if user has a push token
-    if (user?.expoPushToken && remindBeforeMinutes.length > 0) {
-      const notifications = remindBeforeMinutes.map((minutes) => ({
-        examId: exam.id,
-        notifyAt: new Date(examDateTime.getTime() - minutes * 60 * 1000),
-        expoPushToken: user.expoPushToken!,
-      }));
-
-      await this.prisma.scheduledNotification.createMany({
-        data: notifications,
-      });
-    }
 
     return exam;
   }
@@ -119,53 +100,16 @@ export class ExamsService {
       updateData.remindBeforeMinutes = JSON.stringify(dto.remindBeforeMinutes);
     }
 
-    // Update exam
     const updatedExam = await this.prisma.exam.update({
       where: { id },
       data: updateData,
     });
-
-    // Reschedule notifications if time or reminders changed
-    if (dto.examDateTime || dto.remindBeforeMinutes) {
-      // Delete existing unsent notifications
-      await this.prisma.scheduledNotification.deleteMany({
-        where: { examId: id, sent: false },
-      });
-
-      // Get user's push token
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { expoPushToken: true },
-      });
-
-      const examDateTime = new Date(updatedExam.examDateTime);
-      const remindBeforeMinutes = JSON.parse(
-        updatedExam.remindBeforeMinutes as string,
-      );
-
-      if (user?.expoPushToken && remindBeforeMinutes.length > 0) {
-        const notifications = remindBeforeMinutes.map((minutes: number) => ({
-          examId: id,
-          notifyAt: new Date(examDateTime.getTime() - minutes * 60 * 1000),
-          expoPushToken: user.expoPushToken!,
-        }));
-
-        await this.prisma.scheduledNotification.createMany({
-          data: notifications,
-        });
-      }
-    }
 
     return updatedExam;
   }
 
   async remove(id: number, userId: number) {
     await this.findOne(id, userId);
-
-    // Delete notifications first (cascade should handle this, but being explicit)
-    await this.prisma.scheduledNotification.deleteMany({
-      where: { examId: id },
-    });
 
     await this.prisma.exam.delete({
       where: { id },
@@ -176,11 +120,6 @@ export class ExamsService {
 
   async complete(id: number, userId: number) {
     await this.findOne(id, userId);
-
-    // Delete notifications
-    await this.prisma.scheduledNotification.deleteMany({
-      where: { examId: id },
-    });
 
     // Delete the exam
     await this.prisma.exam.delete({
