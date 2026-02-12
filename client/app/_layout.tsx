@@ -81,38 +81,10 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="list/index"
-          options={{
-            title: "My Exams",
-            headerStyle: { backgroundColor: "#1a1a2e" },
-            headerTintColor: "#fff",
-          }}
-        />
-        <Stack.Screen
-          name="list/create"
-          options={{
-            title: "Create Exam",
-            headerStyle: { backgroundColor: "#1a1a2e" },
-            headerTintColor: "#fff",
-          }}
-        />
-        <Stack.Screen
-          name="list/[id]"
-          options={{
-            title: "Edit Exam",
-            headerStyle: { backgroundColor: "#1a1a2e" },
-            headerTintColor: "#fff",
-          }}
-        />
-        <Stack.Screen
-          name="profile"
-          options={{
-            title: "Profile",
-            headerStyle: { backgroundColor: "#1a1a2e" },
-            headerTintColor: "#fff",
-          }}
-        />
+        <Stack.Screen name="list/index" options={{ headerShown: false }} />
+        <Stack.Screen name="list/create" options={{ headerShown: false }} />
+        <Stack.Screen name="list/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="light" />
     </ThemeProvider>
