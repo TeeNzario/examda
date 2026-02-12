@@ -60,6 +60,33 @@ export const initializeDatabase = async (): Promise<void> => {
     );
   `);
 
+  // Migration: add coin sync tracking to user_cache
+  const coinMigrationColumns = [
+    {
+      name: "coinSyncPending",
+      sql: "ALTER TABLE user_cache ADD COLUMN coinSyncPending INTEGER DEFAULT 0",
+    },
+    {
+      name: "pendingCoinDelta",
+      sql: "ALTER TABLE user_cache ADD COLUMN pendingCoinDelta INTEGER DEFAULT 0",
+    },
+  ];
+
+  for (const col of coinMigrationColumns) {
+    try {
+      await db.execAsync(col.sql);
+      console.log(`[Database] Added column: ${col.name}`);
+    } catch (e: any) {
+      // Column already exists — safe to ignore
+      if (!e.message?.includes("duplicate column")) {
+        console.warn(
+          `[Database] Migration warning for ${col.name}:`,
+          e.message,
+        );
+      }
+    }
+  }
+
   console.log("[Database] Initialized successfully");
 };
 
@@ -389,6 +416,46 @@ export const updateCachedUserCoins = async (coins: number): Promise<void> => {
     coins,
     new Date().toISOString(),
   ]);
+};
+
+// Add coins locally (optimistic) and mark for sync
+export const addCoinLocally = async (amount: number): Promise<number> => {
+  const database = getDatabase();
+  await database.runAsync(
+    `UPDATE user_cache SET coin = coin + ?, pendingCoinDelta = pendingCoinDelta + ?, coinSyncPending = 1, updatedAt = ?`,
+    [amount, amount, new Date().toISOString()],
+  );
+  // Return new coin total
+  const row = await database.getFirstAsync<{ coin: number }>(
+    "SELECT coin FROM user_cache LIMIT 1",
+  );
+  return row?.coin ?? 0;
+};
+
+// Get pending coin sync info
+export const getCoinSyncPending = async (): Promise<{
+  pending: boolean;
+  delta: number;
+}> => {
+  const database = getDatabase();
+  const row = await database.getFirstAsync<{
+    coinSyncPending: number;
+    pendingCoinDelta: number;
+  }>("SELECT coinSyncPending, pendingCoinDelta FROM user_cache LIMIT 1");
+  if (!row) return { pending: false, delta: 0 };
+  return {
+    pending: Boolean(row.coinSyncPending),
+    delta: row.pendingCoinDelta ?? 0,
+  };
+};
+
+// Clear coin sync pending flag (after successful server sync)
+export const clearCoinSyncPending = async (): Promise<void> => {
+  const database = getDatabase();
+  await database.runAsync(
+    "UPDATE user_cache SET coinSyncPending = 0, pendingCoinDelta = 0, updatedAt = ?",
+    [new Date().toISOString()],
+  );
 };
 
 // Clear user cache (on logout)

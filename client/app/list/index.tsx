@@ -27,7 +27,7 @@ export default function ListScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { refreshUser } = useAuth();
+  const { updateUserCoins } = useAuth();
 
   const loadExams = async () => {
     try {
@@ -47,7 +47,7 @@ export default function ListScreen() {
     }, []),
   );
 
-  const handleComplete = async (exam: Exam) => {
+  const handleComplete = async (exam: Exam, localId: number) => {
     Alert.alert(
       "ยืนยัน",
       `ทำเครื่องหมาย "${exam.name}" ว่าเสร็จแล้ว? คุณจะได้รับ 5 coins!`,
@@ -56,16 +56,18 @@ export default function ListScreen() {
         {
           text: "เสร็จแล้ว",
           onPress: async () => {
+            // Optimistically remove from UI immediately
+            setExams((prev) => prev.filter((item) => item.localId !== localId));
+
             try {
-              await examsApi.complete(exam.id);
-              await refreshUser();
-              loadExams();
-              Alert.alert("สำเร็จ", "สอบเสร็จแล้ว! +5 coins");
+              const result = await examsApi.complete(localId);
+              // Update coins in context from SQLite total
+              updateUserCoins(result.newCoinTotal);
+              Alert.alert("สำเร็จ", "สอบเสร็จแล้ว! +5 coins 🪙");
             } catch (error: any) {
-              Alert.alert(
-                "Error",
-                error.response?.data?.message || "ไม่สำเร็จ",
-              );
+              // Reload list on error (shouldn't normally happen)
+              loadExams();
+              Alert.alert("Error", error.message || "ไม่สำเร็จ");
             }
           },
         },
@@ -79,7 +81,7 @@ export default function ListScreen() {
       syncStatus={item.syncStatus}
       showActions
       onEdit={() => router.push(`/list/${item.localId}`)}
-      onComplete={() => handleComplete(item.exam)}
+      onComplete={() => handleComplete(item.exam, item.localId)}
     />
   );
 

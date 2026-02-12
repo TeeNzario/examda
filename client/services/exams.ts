@@ -294,11 +294,15 @@ export const examsApi = {
   },
 
   /**
-   * Complete exam - updates locally first, syncs when online
+   * Complete exam - updates locally first, awards coins in SQLite, syncs when online
    */
   complete: async (
     id: number,
-  ): Promise<{ success: boolean; coinsAwarded: number }> => {
+  ): Promise<{
+    success: boolean;
+    coinsAwarded: number;
+    newCoinTotal: number;
+  }> => {
     // Find local exam
     let localExam = await db.getExamByServerId(id);
     if (!localExam) {
@@ -317,22 +321,25 @@ export const examsApi = {
       // Continue even if cancellation fails
     }
 
-    // Update locally
+    // Update locally — mark complete + pending sync
     await db.updateExamLocal(localExam.id, {
       isComplete: true,
       syncStatus: "pending",
     });
 
+    // Award coins locally (optimistic)
+    const newCoinTotal = await db.addCoinLocally(5);
+    console.log(`[Exams] Awarded 5 coins locally. New total: ${newCoinTotal}`);
+
     // Try to complete on server if online
     const isOnline = await checkIsOnline();
     if (isOnline && localExam.serverId) {
       try {
-        const response = await api.post<{
-          success: boolean;
-          coinsAwarded: number;
-        }>(`/exams/${localExam.serverId}/complete`);
+        await api.post(`/exams/${localExam.serverId}/complete`);
         await db.markExamAsSynced(localExam.id);
-        return response.data;
+        // Clear coin delta for this completion since server handled it
+        await db.clearCoinSyncPending();
+        console.log("[Exams] Complete synced to server");
       } catch (error) {
         console.log(
           "[Exams] Failed to sync complete, will retry later:",
@@ -341,7 +348,6 @@ export const examsApi = {
       }
     }
 
-    // Return optimistic response
-    return { success: true, coinsAwarded: 5 };
+    return { success: true, coinsAwarded: 5, newCoinTotal };
   },
 };

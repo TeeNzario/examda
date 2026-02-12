@@ -10,6 +10,7 @@ import {
 import Header from "../../components/Header";
 import { useAuth } from "../../context/AuthContext";
 import { usersApi } from "../../services/users";
+import * as db from "../../services/database";
 
 interface TimerOption {
   label: string;
@@ -82,10 +83,19 @@ export default function CountScreen() {
 
   const handleCompleteConfirm = async () => {
     try {
-      const updatedUser = await usersApi.addCoins(earnedReward);
-      updateUserCoins(updatedUser.coin);
+      // Award coins locally first (works offline)
+      const newCoinTotal = await db.addCoinLocally(earnedReward);
+      updateUserCoins(newCoinTotal);
+      console.log(
+        `[Timer] Awarded ${earnedReward} coins locally. Total: ${newCoinTotal}`,
+      );
+
+      // Try to sync to server in background
+      usersApi.addCoins(earnedReward).catch((error) => {
+        console.log("[Timer] Server coin sync will retry on reconnect:", error);
+      });
     } catch (error) {
-      console.log("Error adding coins:", error);
+      console.log("[Timer] Error adding coins:", error);
     }
     setShowCompleteModal(false);
     setTimeRemaining(selectedOption.seconds);

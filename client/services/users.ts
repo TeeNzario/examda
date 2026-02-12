@@ -12,10 +12,6 @@ export const usersApi = {
     return response.data;
   },
 
-  updatePushToken: async (expoPushToken: string): Promise<void> => {
-    await api.patch("/users/push-token", { expoPushToken });
-  },
-
   addCoins: async (amount: number): Promise<User> => {
     const response = await api.patch<User>("/users/coins/add", { amount });
     return response.data;

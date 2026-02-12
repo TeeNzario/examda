@@ -1,6 +1,7 @@
 import api from "./api";
 import { Exam } from "../types";
 import * as db from "./database";
+import { User } from "../types";
 
 /**
  * Sync service handles bidirectional sync between SQLite and remote API.
@@ -43,6 +44,22 @@ export const syncExams = async (): Promise<{
           }
           await db.hardDeleteExam(exam.id);
           pushed++;
+        } else if (exam.isComplete && exam.serverId) {
+          // Completed exam — use POST /complete which awards coins server-side
+          try {
+            await api.post(`/exams/${exam.serverId}/complete`);
+            await db.markExamAsSynced(exam.id);
+            console.log(`[Sync] Completed exam ${exam.serverId} on server`);
+            pushed++;
+          } catch (error: any) {
+            // If 404 (already deleted/completed), mark as synced
+            if (error.response?.status === 404) {
+              await db.markExamAsSynced(exam.id);
+              pushed++;
+            } else {
+              throw error;
+            }
+          }
         } else if (!exam.serverId) {
           // Create new exam on server
           const response = await api.post<Exam>("/exams", {
@@ -131,6 +148,9 @@ export const syncExams = async (): Promise<{
       errors.push(`Failed to pull from server: ${error.message}`);
     }
 
+    // 3. Sync pending coin deltas
+    await syncCoinDelta();
+
     // Update last sync time
     await db.setLastSyncTime(new Date().toISOString());
     console.log(
@@ -155,6 +175,24 @@ export const syncUserData = async (): Promise<boolean> => {
   } catch (error) {
     console.error("[Sync] Error syncing user data:", error);
     return false;
+  }
+};
+
+/**
+ * Sync pending coin delta to server
+ * Handles accumulated offline coin awards (exam completion, timer rewards)
+ */
+export const syncCoinDelta = async (): Promise<void> => {
+  try {
+    const { pending, delta } = await db.getCoinSyncPending();
+    if (!pending || delta === 0) return;
+
+    console.log(`[Sync] Syncing pending coin delta: +${delta}`);
+    await api.patch<User>("/users/coins/add", { amount: delta });
+    await db.clearCoinSyncPending();
+    console.log("[Sync] Coin delta synced successfully");
+  } catch (error) {
+    console.error("[Sync] Error syncing coin delta:", error);
   }
 };
 
